@@ -539,6 +539,8 @@ void ComponentLoader::AddDefaultComponentExtensions(
 
   if (!skip_session_components) {
     AddWebStoreApp();
+    Add(IDR_BREEZE_SEARCH_MANIFEST,
+        base::FilePath(FILE_PATH_LITERAL("breeze_search")));
 #if BUILDFLAG(IS_CHROMEOS)
     AddChromeApp();
 #endif  // BUILDFLAG(IS_CHROMEOS)

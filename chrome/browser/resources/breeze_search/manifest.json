@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Search cleanup",
+  "version": "1.0.0",
+  "description": "Keeps Google Search useful without sponsored clutter.",
+  "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCyqVVuoIlZKcvk8bBlZ+O08q9OSVOC8IzABD0Qe7ZCZqHqSHHwTX7SPKWUSDLckb7M9MxcoQGbAfNSVesllqCm87/Q3TeNdp/xf3obCvXswAC+/XDAnW1qJoGYCbcy2YOKRtQd8XEHcZSkG3PZJEpL8DZZQDPpLIU8LSNL+yYKKwIDAQAB",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.google.com/search*",
+        "https://*.google.fr/search*",
+        "https://*.google.be/search*",
+        "https://*.google.ch/search*",
+        "https://*.google.de/search*",
+        "https://*.google.es/search*",
+        "https://*.google.it/search*",
+        "https://*.google.nl/search*",
+        "https://*.google.pt/search*",
+        "https://*.google.co.uk/search*",
+        "https://*.google.ie/search*",
+        "https://*.google.at/search*",
+        "https://*.google.pl/search*",
+        "https://*.google.se/search*",
+        "https://*.google.dk/search*",
+        "https://*.google.fi/search*",
+        "https://*.google.no/search*",
+        "https://*.google.cz/search*",
+        "https://*.google.sk/search*",
+        "https://*.google.hu/search*",
+        "https://*.google.ro/search*",
+        "https://*.google.bg/search*",
+        "https://*.google.hr/search*",
+        "https://*.google.si/search*",
+        "https://*.google.lt/search*",
+        "https://*.google.lv/search*",
+        "https://*.google.ee/search*",
+        "https://*.google.gr/search*",
+        "https://*.google.lu/search*",
+        "https://*.google.com.mt/search*",
+        "https://*.google.com.cy/search*",
+        "https://*.google.ca/search*",
+        "https://*.google.com.au/search*",
+        "https://*.google.co.nz/search*",
+        "https://*.google.co.jp/search*",
+        "https://*.google.co.in/search*"
+      ],
+      "css": ["content.css"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
