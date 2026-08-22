@@ -157,8 +157,6 @@ const AcceleratorMapping kAcceleratorMap[] = {
 #endif  // BUILDFLAG(IS_CHROMEOS)
     {ui::VKEY_F10, ui::EF_NONE, IDC_FOCUS_MENU_BAR},
     {ui::VKEY_F11, ui::EF_NONE, IDC_FULLSCREEN},
-    {ui::VKEY_M, ui::EF_SHIFT_DOWN | ui::EF_PLATFORM_ACCELERATOR,
-     IDC_SHOW_AVATAR_MENU},
     {ui::VKEY_L, ui::EF_SHIFT_DOWN | ui::EF_PLATFORM_ACCELERATOR,
      IDC_TOGGLE_VERTICAL_TABS_COLLAPSE},
 
