@@ -539,10 +539,10 @@ PasswordForm CreateFormForLeakCheck(const PasswordForm& pending_credentials,
 void PasswordManager::RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterBooleanPref(
-      prefs::kCredentialsEnableService, true,
+      prefs::kCredentialsEnableService, false,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PRIORITY_PREF);
   registry->RegisterBooleanPref(
-      prefs::kCredentialsEnableAutosignin, true,
+      prefs::kCredentialsEnableAutosignin, false,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PRIORITY_PREF);
   registry->RegisterBooleanPref(
       prefs::kWasAutoSignInFirstRunExperienceShown, false,
