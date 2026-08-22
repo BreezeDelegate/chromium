@@ -6,7 +6,7 @@ Keep Chrome-like behavior while removing prompts and background features that do
 
 ## Blocking
 
-Use a native request/cosmetic filtering engine with maintained filter lists. Keep SponsorBlock isolated as its own licensed component.
+Use native request filtering with maintained lists, then add cosmetic filtering and simple per-site controls. Keep SponsorBlock isolated as its own licensed component.
 
 ## Search
 

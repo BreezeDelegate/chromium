@@ -67,6 +67,7 @@
 #include "chrome/browser/browser_about_handler.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/breeze_adblock/breeze_adblock_throttle.h"
 #include "chrome/browser/browsing_data/chrome_browsing_data_model_delegate.h"
 #include "chrome/browser/browsing_data/chrome_browsing_data_remover_constants.h"
 #include "chrome/browser/btm/btm_browser_signin_detector.h"
@@ -5945,6 +5946,9 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   std::vector<std::unique_ptr<blink::URLLoaderThrottle>> result;
+
+  result.push_back(
+      std::make_unique<breeze_adblock::BreezeAdblockThrottle>(request));
 
   DCHECK(browser_context);
   Profile* profile = Profile::FromBrowserContext(browser_context);

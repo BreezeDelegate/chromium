@@ -16,6 +16,7 @@
       <include name="IDR_BREEZE_SEARCH_CONTENT_CSS" file="breeze_search/content.css" type="BINDATA" />
       <include name="IDR_BREEZE_SEARCH_CONTENT_JS" file="breeze_search/content.js" type="BINDATA" />
       <include name="IDR_BREEZE_SPONSORBLOCK_ZIP" file="breeze_sponsorblock/sponsorblock.zip" type="BINDATA" />
+      <include name="IDR_BREEZE_ADBLOCK_ENGINE" file="../../../third_party/easylist/engine.dat" type="BINDATA" />
 
       <include name="IDR_NETWORK_SPEECH_SYNTHESIS_JS" file="network_speech_synthesis/tts_extension.js" type="BINDATA" />
 

@@ -7,10 +7,11 @@ Done:
 - disabled Chromium password saving and auto sign-in by default;
 - disabled address, payment and form-history Autofill by default;
 - cleaned sponsored modules from Google Search without touching Gemini and restored a direct Maps action when it is absent;
-- bundled SponsorBlock 6.1.7 as an isolated GPL component with the matching upstream source archive.
+- bundled SponsorBlock 6.1.7 as an isolated GPL component with the matching upstream source archive;
+- added native network ad/tracker blocking with adblock-rust 0.13.3, EasyList and EasyPrivacy, loaded from a reproducible serialized engine.
 
 Next:
-- native ad/tracker blocking;
+- cosmetic filtering, per-site controls and filter-list updates;
 - Gemini temporary-chat preference where the official web flow supports it;
 - privacy defaults and telemetry review;
 - media/DRM build matrix;

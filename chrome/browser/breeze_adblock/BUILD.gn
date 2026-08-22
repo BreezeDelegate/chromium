@@ -1,0 +1,32 @@
+# Copyright 2026 BreezeDelegate
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/rust.gni")
+
+rust_static_library("rust") {
+  allow_unsafe = true  # Required by the cxx FFI support.
+  crate_root = "breeze_adblock_ffi.rs"
+  sources = [ "breeze_adblock_ffi.rs" ]
+  cxx_bindings = [ "breeze_adblock_ffi.rs" ]
+  deps = [ "//third_party/rust/adblock/v0_13:lib" ]
+}
+
+source_set("breeze_adblock") {
+  sources = [
+    "breeze_adblock_service.cc",
+    "breeze_adblock_service.h",
+    "breeze_adblock_throttle.cc",
+    "breeze_adblock_throttle.h",
+  ]
+  deps = [
+    ":rust",
+    "//base",
+    "//content/public/common",
+    "//net",
+    "//services/network/public/cpp",
+    "//third_party/blink/public/common",
+    "//ui/base",
+    "//url",
+  ]
+}

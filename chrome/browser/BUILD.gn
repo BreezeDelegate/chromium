@@ -937,6 +937,7 @@ source_set("core") {
     "//chrome/browser/background",
     "//chrome/browser/battery",
     "//chrome/browser/bluetooth",
+    "//chrome/browser/breeze_adblock",
     "//chrome/browser/browsing_data",
     "//chrome/browser/browsing_data:constants",
     "//chrome/browser/btm",

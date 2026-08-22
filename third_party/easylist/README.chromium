@@ -1,0 +1,18 @@
+Name: EasyList and EasyPrivacy
+URL: https://easylist.to/
+Version: 202608221305
+Revision: 7e7f7d04c0f37a1038485d1b6731b6920c78b111
+License: GPL-3.0-or-later
+License File: LICENSE
+Shipped: yes
+Security Critical: yes
+
+EasyList blocks advertising. EasyPrivacy blocks tracking. The snapshots are the
+upstream generated subscriptions for the revision above. The EasyList authors
+are the source of this material.
+
+EasyList SHA-256: 50e0f072949f12dcd83525db72e018f7b466cc3971833f21d50c819def708c7c
+EasyPrivacy SHA-256: 39de768e3200e669ee0adee5f0d1fff9c347c45179a409a69e6378c5728f359a
+
+The browser ships engine.dat, generated from these two snapshots with adblock-rust 0.13.3.
+Engine SHA-256: 5e42d6cbacd2b23457a278b56bf2cc92aed6cc506db2f2760cddf6e2f68611e9
