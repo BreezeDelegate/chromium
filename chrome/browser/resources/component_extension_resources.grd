@@ -12,6 +12,10 @@
   </outputs>
   <release seq="1">
     <includes>
+      <include name="IDR_BREEZE_SEARCH_MANIFEST" file="breeze_search/manifest.json" type="BINDATA" />
+      <include name="IDR_BREEZE_SEARCH_CONTENT_CSS" file="breeze_search/content.css" type="BINDATA" />
+      <include name="IDR_BREEZE_SEARCH_CONTENT_JS" file="breeze_search/content.js" type="BINDATA" />
+
       <include name="IDR_NETWORK_SPEECH_SYNTHESIS_JS" file="network_speech_synthesis/tts_extension.js" type="BINDATA" />
 
       <include name="IDR_NETWORK_SPEECH_SYNTHESIS_MV3_AUDIO_HTML" file="network_speech_synthesis/mv3/audio.html" type="BINDATA" />
