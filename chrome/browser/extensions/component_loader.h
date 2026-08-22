@@ -217,6 +217,8 @@ class ComponentLoader : public KeyedService {
 
   void AddContextualTasksExtension();
 
+  void AddSponsorBlockExtension();
+
   void AddWithNameAndDescription(int manifest_resource_id,
                                  const base::FilePath& root_directory,
                                  const std::string& name_string,
