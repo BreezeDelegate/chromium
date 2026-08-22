@@ -1197,24 +1197,24 @@ public class PersonalDataManagerTest {
                 () -> {
                     PersonalDataManager pdm =
                             AutofillTestHelper.getPersonalDataManagerForLastUsedProfile();
-                    assertTrue(pdm.isAutofillProfileEnabled());
+                    assertFalse(pdm.isAutofillProfileEnabled());
 
                     HistogramWatcher histogramExpectation =
-                            HistogramWatcher.newSingleRecordWatcher(
-                                    PersonalDataManager
-                                            .AUTOFILL_ADDRESS_OPT_IN_CHANGE_HISTOGRAM_NAME,
-                                    PersonalDataManager.AutofillAddressOptInChange.OPT_OUT);
-                    pdm.setAutofillProfileEnabled(false);
-                    assertFalse(pdm.isAutofillProfileEnabled());
-                    histogramExpectation.assertExpected();
-
-                    histogramExpectation =
                             HistogramWatcher.newSingleRecordWatcher(
                                     PersonalDataManager
                                             .AUTOFILL_ADDRESS_OPT_IN_CHANGE_HISTOGRAM_NAME,
                                     PersonalDataManager.AutofillAddressOptInChange.OPT_IN);
                     pdm.setAutofillProfileEnabled(true);
                     assertTrue(pdm.isAutofillProfileEnabled());
+                    histogramExpectation.assertExpected();
+
+                    histogramExpectation =
+                            HistogramWatcher.newSingleRecordWatcher(
+                                    PersonalDataManager
+                                            .AUTOFILL_ADDRESS_OPT_IN_CHANGE_HISTOGRAM_NAME,
+                                    PersonalDataManager.AutofillAddressOptInChange.OPT_OUT);
+                    pdm.setAutofillProfileEnabled(false);
+                    assertFalse(pdm.isAutofillProfileEnabled());
                     histogramExpectation.assertExpected();
                 });
     }
