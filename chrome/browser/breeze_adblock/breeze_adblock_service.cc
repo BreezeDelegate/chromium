@@ -7,15 +7,16 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted_memory.h"
 #include "base/no_destructor.h"
 #include "base/task/thread_pool.h"
-#include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "chrome/browser/breeze_adblock/breeze_adblock_ffi.rs.h"
 #include "chrome/grit/component_extension_resources.h"
+#include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "url/gurl.h"
 
@@ -62,7 +63,41 @@ class EngineService {
         rust::Str(method.data(), method.size()));
   }
 
+  std::string CosmeticCssForUrl(const GURL& url) const {
+    const BreezeAdblockEngine* engine = engine_.load(std::memory_order_acquire);
+    if (!engine) {
+      return {};
+    }
+    const std::string domain = DomainForUrl(url);
+    return static_cast<std::string>(engine->cosmetic_css(
+        rust::Str(url.spec()), rust::Str(url.host().data(), url.host().size()),
+        rust::Str(domain)));
+  }
+
+  std::string GenericCosmeticCssForUrl(const GURL& url,
+                                       std::string_view classes,
+                                       std::string_view ids) const {
+    const BreezeAdblockEngine* engine = engine_.load(std::memory_order_acquire);
+    if (!engine) {
+      return {};
+    }
+    const std::string domain = DomainForUrl(url);
+    return static_cast<std::string>(engine->generic_cosmetic_css(
+        rust::Str(url.spec()), rust::Str(url.host().data(), url.host().size()),
+        rust::Str(domain), rust::Str(classes.data(), classes.size()),
+        rust::Str(ids.data(), ids.size())));
+  }
+
  private:
+  static std::string DomainForUrl(const GURL& url) {
+    std::string domain = net::registry_controlled_domains::GetDomainAndRegistry(
+        url, net::registry_controlled_domains::INCLUDE_PRIVATE_REGISTRIES);
+    if (domain.empty()) {
+      domain = url.host();
+    }
+    return domain;
+  }
+
   void OnEngineReady(rust::Box<BreezeAdblockEngine> engine) {
     engine_owner_ =
         std::make_unique<rust::Box<BreezeAdblockEngine>>(std::move(engine));
@@ -80,11 +115,25 @@ EngineService& GetEngineService() {
 
 }  // namespace
 
+void WarmUp() {
+  GetEngineService();
+}
+
 bool ShouldBlock(const GURL& url,
                  const GURL& source_url,
                  std::string_view request_type,
                  std::string_view method) {
   return GetEngineService().ShouldBlock(url, source_url, request_type, method);
+}
+
+std::string CosmeticCssForUrl(const GURL& url) {
+  return GetEngineService().CosmeticCssForUrl(url);
+}
+
+std::string GenericCosmeticCssForUrl(const GURL& url,
+                                     std::string_view classes,
+                                     std::string_view ids) {
+  return GetEngineService().GenericCosmeticCssForUrl(url, classes, ids);
 }
 
 }  // namespace breeze_adblock

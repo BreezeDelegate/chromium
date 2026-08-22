@@ -14,6 +14,8 @@ rust_static_library("rust") {
 
 source_set("breeze_adblock") {
   sources = [
+    "breeze_adblock_cosmetic_observer.cc",
+    "breeze_adblock_cosmetic_observer.h",
     "breeze_adblock_service.cc",
     "breeze_adblock_service.h",
     "breeze_adblock_throttle.cc",
@@ -22,6 +24,8 @@ source_set("breeze_adblock") {
   deps = [
     ":rust",
     "//base",
+    "//chrome/common",
+    "//content/public/browser",
     "//content/public/common",
     "//net",
     "//services/network/public/cpp",

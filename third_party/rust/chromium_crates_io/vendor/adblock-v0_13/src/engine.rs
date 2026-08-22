@@ -393,6 +393,25 @@ impl Engine {
         )
     }
 
+    /// Like `url_cosmetic_resources`, but uses an already parsed hostname.
+    /// This avoids resolving the registrable domain when the embedder already
+    /// has parsed URL information.
+    pub fn url_cosmetic_resources_preparsed(
+        &self,
+        url: &str,
+        hostname: &str,
+        domain: &str,
+    ) -> UrlSpecificResources {
+        let request = Request::preparsed(url, hostname, hostname, "document", false, "get");
+        let generichide = self.blocker.check_generic_hide(&request);
+        self.cosmetic_cache.hostname_cosmetic_resources_preparsed(
+            &self.resources,
+            &request.hostname,
+            domain,
+            generichide,
+        )
+    }
+
     pub fn set_regex_discard_policy(&self, new_discard_policy: RegexManagerDiscardPolicy) {
         self.blocker.set_regex_discard_policy(new_discard_policy);
     }

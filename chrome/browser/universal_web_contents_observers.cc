@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/universal_web_contents_observers.h"
+#include "chrome/browser/breeze_adblock/breeze_adblock_cosmetic_observer.h"
 
 #include "components/performance_manager/embedder/performance_manager_registry.h"
 #include "content/public/browser/web_contents.h"
@@ -19,6 +20,9 @@ void AttachUniversalWebContentsObservers(content::WebContents* web_contents) {
   // helpers are relatively rare and therefore only a limited set of observers
   // should be handled below.
   //
+  breeze_adblock::BreezeAdblockCosmeticObserver::CreateForWebContents(
+      web_contents);
+
   // In particular, helpers handled by TabHelpers::AttachTabHelpers typically
   // only apply to tabs, but not to other flavors of WebContents.  As pointed
   // out by //docs/tab_helpers.md there are WebContents that are not tabs

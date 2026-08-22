@@ -240,8 +240,17 @@ impl CosmeticFilterCache {
             let (start, end) = crate::url_parser::get_host_domain(hostname);
             &hostname[start..end]
         };
+        self.hostname_cosmetic_resources_preparsed(resources, hostname, domain_str, generichide)
+    }
 
-        let (request_entities, request_hostnames) = hostname_domain_hashes(hostname, domain_str);
+    pub fn hostname_cosmetic_resources_preparsed(
+        &self,
+        resources: &ResourceStorage,
+        hostname: &str,
+        domain: &str,
+        generichide: bool,
+    ) -> UrlSpecificResources {
+        let (request_entities, request_hostnames) = hostname_domain_hashes(hostname, domain);
 
         let mut specific_hide_selectors = HashSet::new();
         let mut procedural_actions = HashSet::new();
