@@ -5,8 +5,12 @@
 #include "chrome/browser/ui/page_info/chrome_page_info_ui_delegate.h"
 
 #include "base/feature_list.h"
+#include "base/functional/bind.h"
+#include "base/location.h"
+#include "base/memory/weak_ptr.h"
 #include "base/notreached.h"
 #include "build/build_config.h"
+#include "chrome/browser/breeze_adblock/breeze_adblock_prefs.h"
 #include "chrome/browser/page_info/about_this_site_tab_helper.h"
 #include "chrome/browser/page_info/merchant_trust_service_factory.h"
 #include "chrome/browser/page_info/page_info_features.h"
@@ -30,9 +34,12 @@
 #include "components/permissions/permissions_client.h"
 #include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
+#include "content/public/browser/browser_task_traits.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/permission_controller.h"
 #include "content/public/browser/permission_descriptor_util.h"
 #include "content/public/browser/permission_result.h"
+#include "content/public/browser/reload_type.h"
 #include "content/public/browser/web_contents.h"
 #include "net/base/url_util.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
@@ -349,6 +356,29 @@ void ChromePageInfoUiDelegate::RecordMerchantTrustButtonShown() {
         web_contents_->GetVisibleURL(),
         page_info::MerchantTrustInteraction::kPageInfoRowShown);
   }
+}
+
+bool ChromePageInfoUiDelegate::IsBreezeAdblockAvailable() const {
+  return !breeze_adblock::SiteKey(site_url_).empty();
+}
+
+bool ChromePageInfoUiDelegate::IsBreezeAdblockEnabled() const {
+  return breeze_adblock::IsEnabledForSite(GetProfile()->GetPrefs(), site_url_);
+}
+
+void ChromePageInfoUiDelegate::SetBreezeAdblockEnabled(bool enabled) {
+  breeze_adblock::SetEnabledForSite(GetProfile()->GetPrefs(), site_url_, enabled);
+
+  content::GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](base::WeakPtr<content::WebContents> web_contents) {
+                       if (web_contents) {
+                         web_contents->GetController().Reload(
+                             content::ReloadType::NORMAL,
+                             /*check_for_repost=*/true);
+                       }
+                     },
+                     web_contents_->GetWeakPtr()));
 }
 
 void ChromePageInfoUiDelegate::RecordMerchantTrustSidePanelOpened() {

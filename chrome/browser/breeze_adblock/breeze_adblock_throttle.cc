@@ -6,6 +6,7 @@
 
 #include <string_view>
 
+#include "chrome/browser/breeze_adblock/breeze_adblock_prefs.h"
 #include "chrome/browser/breeze_adblock/breeze_adblock_service.h"
 #include "net/base/net_errors.h"
 #include "net/url_request/redirect_info.h"
@@ -85,16 +86,18 @@ bool IsBlockable(const network::ResourceRequest& request) {
 }  // namespace
 
 BreezeAdblockThrottle::BreezeAdblockThrottle(
-    const network::ResourceRequest& request)
+    const network::ResourceRequest& request,
+    const PrefService* prefs)
     : source_url_(GetSourceUrl(request)),
       request_type_(GetRequestType(request)),
-      blockable_(IsBlockable(request)) {}
+      blockable_(IsBlockable(request)),
+      enabled_for_site_(IsEnabledForSite(prefs, source_url_)) {}
 
 BreezeAdblockThrottle::~BreezeAdblockThrottle() = default;
 
 void BreezeAdblockThrottle::WillStartRequest(network::ResourceRequest* request,
                                              bool* defer) {
-  if (blockable_) {
+  if (blockable_ && enabled_for_site_) {
     MaybeBlock(request->url, request->method);
   }
 }
@@ -104,7 +107,7 @@ void BreezeAdblockThrottle::WillRedirectRequest(
     const network::mojom::URLResponseHead& response_head,
     bool* defer,
     network::HttpRequestHeadersUpdateParams* headers_update_params) {
-  if (blockable_) {
+  if (blockable_ && enabled_for_site_) {
     MaybeBlock(redirect_info->new_url, redirect_info->new_method);
   }
 }

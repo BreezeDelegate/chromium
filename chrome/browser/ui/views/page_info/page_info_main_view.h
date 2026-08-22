@@ -115,6 +115,9 @@ class PageInfoMainView : public views::View,
   // button.
   [[nodiscard]] std::unique_ptr<views::View> CreateBubbleHeaderView();
 
+  [[nodiscard]] std::unique_ptr<views::View> CreateBreezeAdblockRow();
+  void OnBreezeAdblockTogglePressed();
+
   // Posts a task to HandleMoreInfoRequestAsync() below.
   void HandleMoreInfoRequest(views::View* source);
 

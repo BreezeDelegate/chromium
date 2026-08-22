@@ -10,6 +10,8 @@
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "url/gurl.h"
 
+class PrefService;
+
 namespace network {
 struct ResourceRequest;
 }
@@ -18,7 +20,8 @@ namespace breeze_adblock {
 
 class BreezeAdblockThrottle : public blink::URLLoaderThrottle {
  public:
-  explicit BreezeAdblockThrottle(const network::ResourceRequest& request);
+  BreezeAdblockThrottle(const network::ResourceRequest& request,
+                        const PrefService* prefs);
   ~BreezeAdblockThrottle() override;
 
   void WillStartRequest(network::ResourceRequest* request,
@@ -35,6 +38,7 @@ class BreezeAdblockThrottle : public blink::URLLoaderThrottle {
   GURL source_url_;
   std::string request_type_;
   bool blockable_ = false;
+  bool enabled_for_site_ = true;
 };
 
 }  // namespace breeze_adblock

@@ -16,6 +16,8 @@ source_set("breeze_adblock") {
   sources = [
     "breeze_adblock_cosmetic_observer.cc",
     "breeze_adblock_cosmetic_observer.h",
+    "breeze_adblock_prefs.cc",
+    "breeze_adblock_prefs.h",
     "breeze_adblock_service.cc",
     "breeze_adblock_service.h",
     "breeze_adblock_throttle.cc",
@@ -24,13 +26,27 @@ source_set("breeze_adblock") {
   deps = [
     ":rust",
     "//base",
+    "//chrome/browser/profiles:profile",
     "//chrome/common",
+    "//components/pref_registry",
+    "//components/prefs",
     "//content/public/browser",
     "//content/public/common",
     "//net",
     "//services/network/public/cpp",
     "//third_party/blink/public/common",
     "//ui/base",
+    "//url",
+  ]
+}
+
+source_set("unit_tests") {
+  testonly = true
+  sources = [ "breeze_adblock_prefs_unittest.cc" ]
+  deps = [
+    ":breeze_adblock",
+    "//components/sync_preferences:test_support",
+    "//testing/gtest",
     "//url",
   ]
 }

@@ -11,7 +11,9 @@
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
+#include "chrome/browser/breeze_adblock/breeze_adblock_prefs.h"
 #include "chrome/browser/breeze_adblock/breeze_adblock_service.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/common/chrome_isolated_world_ids.h"
 #include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/render_frame_host.h"
@@ -88,6 +90,12 @@ void BreezeAdblockCosmeticObserver::DOMContentLoaded(
     content::RenderFrameHost* render_frame_host) {
   const GURL& url = render_frame_host->GetLastCommittedURL();
   if (!url.SchemeIsHTTPOrHTTPS()) {
+    return;
+  }
+
+  Profile* profile =
+      Profile::FromBrowserContext(render_frame_host->GetBrowserContext());
+  if (!profile || !IsEnabledForSite(profile->GetPrefs(), url)) {
     return;
   }
 

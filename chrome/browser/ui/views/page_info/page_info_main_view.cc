@@ -21,6 +21,7 @@
 #include "chrome/browser/ui/views/accessibility/non_accessible_image_view.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/chrome_typography.h"
+#include "chrome/browser/ui/views/controls/rich_controls_container_view.h"
 #include "chrome/browser/ui/views/controls/rich_hover_button.h"
 #include "chrome/browser/ui/views/page_info/chosen_object_view.h"
 #include "chrome/browser/ui/views/page_info/page_info_navigation_handler.h"
@@ -31,6 +32,7 @@
 #include "chrome/browser/ui/views/sub_apps_permission_explanation.h"
 #include "chrome/browser/vr/vr_tab_helper.h"
 #include "chrome/common/url_constants.h"
+#include "chrome/grit/generated_resources.h"
 #include "components/page_info/core/about_this_site_service.h"
 #include "components/page_info/core/features.h"
 #include "components/page_info/page_info_ui_delegate.h"
@@ -49,6 +51,7 @@
 #include "ui/views/background.h"
 #include "ui/views/bubble/bubble_frame_view.h"
 #include "ui/views/controls/button/md_text_button.h"
+#include "ui/views/controls/button/toggle_button.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/scroll_view.h"
@@ -176,6 +179,10 @@ PageInfoMainView::PageInfoMainView(
 
   site_settings_view_ = AddChildView(CreateContainerView());
 
+  if (ui_delegate_->IsBreezeAdblockAvailable()) {
+    site_settings_view_->AddChildView(CreateBreezeAdblockRow());
+  }
+
   int link_text_id = 0;
   int tooltip_text_id = 0;
   if (ui_delegate_->ShouldShowSiteSettings(&link_text_id, &tooltip_text_id)) {
@@ -224,6 +231,39 @@ PageInfoMainView::PageInfoMainView(
 }
 
 PageInfoMainView::~PageInfoMainView() = default;
+
+std::unique_ptr<views::View> PageInfoMainView::CreateBreezeAdblockRow() {
+  auto row = std::make_unique<RichControlsContainerView>();
+  const std::u16string title =
+      l10n_util::GetStringUTF16(IDS_BREEZE_ADBLOCK_PAGE_INFO_TITLE);
+  row->SetIcon(
+      PageInfoViewFactory::GetImageModel(vector_icons::kShieldIcon));
+  row->SetTitle(title);
+  row->SetTitleTextStyleAndColor(views::style::STYLE_BODY_3_MEDIUM,
+                                 kColorPageInfoForeground);
+  row->AddSecondaryLabel(l10n_util::GetStringUTF16(
+      ui_delegate_->IsBreezeAdblockEnabled()
+          ? IDS_BREEZE_ADBLOCK_PAGE_INFO_ENABLED
+          : IDS_BREEZE_ADBLOCK_PAGE_INFO_DISABLED));
+
+  auto toggle = std::make_unique<views::ToggleButton>(base::BindRepeating(
+      &PageInfoMainView::OnBreezeAdblockTogglePressed, base::Unretained(this)));
+  toggle->SetIsOn(ui_delegate_->IsBreezeAdblockEnabled());
+  toggle->GetViewAccessibility().SetName(title);
+  toggle->SetPreferredSize(
+      gfx::Size(toggle->GetPreferredSize().width(), row->GetFirstLineHeight()));
+  const int spacing = ChromeLayoutProvider::Get()->GetDistanceMetric(
+      views::DISTANCE_RELATED_LABEL_HORIZONTAL);
+  toggle->SetProperty(views::kMarginsKey,
+                      gfx::Insets::TLBR(0, spacing, 0, 0));
+  row->AddControl(std::move(toggle));
+  return row;
+}
+
+void PageInfoMainView::OnBreezeAdblockTogglePressed() {
+  ui_delegate_->SetBreezeAdblockEnabled(
+      !ui_delegate_->IsBreezeAdblockEnabled());
+}
 
 void PageInfoMainView::SetCookieInfo(const CookiesInfo& cookie_info) {
   // Ensure we don't add this button multiple times in error.

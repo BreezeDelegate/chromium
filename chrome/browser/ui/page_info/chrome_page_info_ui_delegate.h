@@ -92,6 +92,10 @@ class ChromePageInfoUiDelegate : public PageInfoUiDelegate {
   void RecordMerchantTrustButtonShown();
   void RecordMerchantTrustSidePanelOpened();
 
+  bool IsBreezeAdblockAvailable() const;
+  bool IsBreezeAdblockEnabled() const;
+  void SetBreezeAdblockEnabled(bool enabled);
+
   content::WebContents* GetWebContents() const { return web_contents_; }
 
  private:
