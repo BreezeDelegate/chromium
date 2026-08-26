@@ -67,6 +67,7 @@ jobs:
             /third_party/rust/chromium_crates_io/Cargo.lock
             /third_party/rust/chromium_crates_io/gnrt_config.toml
             /third_party/rust/chromium_crates_io/patches/adblock-v0_13/
+            /third_party/rust/chromium_crates_io/patches/flatbuffers-v25/
 
       - name: Fetch bounded Chromium history and verify immutable inputs
         shell: bash
@@ -88,7 +89,7 @@ jobs:
           git checkout -B breeze-rebase-candidate "$FIRST_FIVE"
           git rebase --onto "$EXPECTED_MAIN" "$PRODUCT_BASE" breeze-rebase-candidate
 
-      - name: Apply remaining Breeze source without any stale generated Rust
+      - name: Apply remaining Breeze source without stale generated Rust
         shell: bash
         run: |
           set -euo pipefail
@@ -97,6 +98,7 @@ jobs:
             > /tmp/breeze-source.patch
           git diff --binary "$FIRST_FIVE" "$EXPECTED_BREEZE" -- \
             third_party/rust/chromium_crates_io/patches/adblock-v0_13/ \
+            third_party/rust/chromium_crates_io/patches/flatbuffers-v25/ \
             >> /tmp/breeze-source.patch
           test -s /tmp/breeze-source.patch
           git apply --3way --index /tmp/breeze-source.patch
@@ -116,13 +118,23 @@ jobs:
 
           cfg = Path('third_party/rust/chromium_crates_io/gnrt_config.toml')
           text = cfg.read_text()
-          if '[crate.adblock]' in text:
-              raise SystemExit('unexpected upstream adblock gnrt config')
-          cfg.write_text(text.rstrip() + '\n\n[crate.adblock]\nextra_kv = { allow_unsafe = true }\n')
+          sections = {
+              'adblock': 'extra_kv = { allow_unsafe = true }',
+              'arrayvec': 'extra_kv = { allow_unsafe = true }',
+              'flatbuffers': 'license_files = ["LICENSE"]\nextra_kv = { allow_unsafe = true }',
+              'form_urlencoded': 'extra_kv = { allow_unsafe = true }',
+          }
+          for name, body in sections.items():
+              if f'[crate.{name}]' in text or f'[crate.{name}.extra_kv]' in text:
+                  raise SystemExit(f'unexpected upstream {name} gnrt config')
+              text = text.rstrip() + f'\n\n[crate.{name}]\n{body}\n'
+          cfg.write_text(text)
           PY
 
           git add third_party/rust/chromium_crates_io/Cargo.toml \
-                  third_party/rust/chromium_crates_io/gnrt_config.toml
+                  third_party/rust/chromium_crates_io/gnrt_config.toml \
+                  third_party/rust/chromium_crates_io/patches/adblock-v0_13/ \
+                  third_party/rust/chromium_crates_io/patches/flatbuffers-v25/
           git commit -m 'Reapply Breeze blocking on current Chromium'
 
       - name: Assert semantic candidate before gnrt
@@ -134,9 +146,14 @@ jobs:
           test -f chrome/browser/breeze_adblock/breeze_adblock_service.cc
           grep -F 'adblock = { version = "0.13.3"' third_party/rust/chromium_crates_io/Cargo.toml
           grep -F '[crate.adblock]' third_party/rust/chromium_crates_io/gnrt_config.toml
+          grep -F '[crate.arrayvec]' third_party/rust/chromium_crates_io/gnrt_config.toml
+          grep -F '[crate.flatbuffers]' third_party/rust/chromium_crates_io/gnrt_config.toml
+          grep -F '[crate.form_urlencoded]' third_party/rust/chromium_crates_io/gnrt_config.toml
           test -f third_party/rust/chromium_crates_io/patches/adblock-v0_13/0001-Add-preparsed-cosmetic-query.diff
+          test -f third_party/rust/chromium_crates_io/patches/flatbuffers-v25/0001-Add-upstream-license.diff
+          grep -F 'index 0000000..d645695' third_party/rust/chromium_crates_io/patches/flatbuffers-v25/0001-Add-upstream-license.diff
           test "$(git merge-base HEAD "$EXPECTED_MAIN")" = "$EXPECTED_MAIN"
-          test "$(git diff --name-only "$EXPECTED_MAIN" HEAD -- 'third_party/rust/**' | grep -v '^third_party/rust/chromium_crates_io/Cargo.toml$' | grep -v '^third_party/rust/chromium_crates_io/gnrt_config.toml$' | grep -v '^third_party/rust/chromium_crates_io/patches/adblock-v0_13/' | wc -l)" -eq 0
+          test "$(git diff --name-only "$EXPECTED_MAIN" HEAD -- 'third_party/rust/**' | grep -v '^third_party/rust/chromium_crates_io/Cargo.toml$' | grep -v '^third_party/rust/chromium_crates_io/gnrt_config.toml$' | grep -v '^third_party/rust/chromium_crates_io/patches/adblock-v0_13/' | grep -v '^third_party/rust/chromium_crates_io/patches/flatbuffers-v25/' | wc -l)" -eq 0
 
       - name: Materialize current Chromium Rust tooling
         shell: bash
@@ -228,5 +245,5 @@ jobs:
             echo "- product base: \`$PRODUCT_BASE\`"
             echo "- candidate branch: \`$CANDIDATE_BRANCH\`"
             echo
-            echo 'This is a temporary GitHub-hosted path. Product promotion remains blocked on reconciling the preserved VPS hot-swap WIP and on final self-hosted validation.'
+            echo 'Temporary GitHub-hosted path. Product promotion remains blocked on reconciling the preserved VPS hot-swap WIP and final self-hosted validation.'
           } >> "$GITHUB_STEP_SUMMARY"
