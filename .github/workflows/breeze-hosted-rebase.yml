@@ -75,8 +75,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --filter=blob:none --no-tags --depth=32 origin "$EXPECTED_BREEZE"
-          git fetch --filter=blob:none --no-tags --depth=2300 origin "$EXPECTED_MAIN"
+          git -c submodule.recurse=false fetch --filter=blob:none --no-tags --depth=32 origin "$EXPECTED_BREEZE"
+          git -c submodule.recurse=false fetch --filter=blob:none --no-tags --depth=2300 origin "$EXPECTED_MAIN"
           git cat-file -e "$PRODUCT_BASE^{commit}"
           git cat-file -e "$EXPECTED_BREEZE^{commit}"
           git cat-file -e "$EXPECTED_MAIN^{commit}"
@@ -90,6 +90,7 @@ jobs:
           set -euo pipefail
           git config user.name BreezeDelegate
           git config user.email 271538431+BreezeDelegate@users.noreply.github.com
+          git config submodule.recurse false
           git checkout -B breeze-rebase-candidate "$EXPECTED_BREEZE"
           git rebase --onto "$EXPECTED_MAIN" "$PRODUCT_BASE" breeze-rebase-candidate
 
