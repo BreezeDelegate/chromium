@@ -1,0 +1,77 @@
+name: Breeze hosted rebase preflight
+
+on:
+  push:
+    branches:
+      - ci/breeze-hosted-bootstrap
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: breeze-hosted-rebase-preflight
+  cancel-in-progress: true
+
+jobs:
+  rebase-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PRODUCT_BASE: 66e4be60020fc281e94abfdcb37b86389283c03f
+      EXPECTED_BREEZE: 7047fd3d03eec7cd108a7001b17ba6e8eb70bfe1
+      EXPECTED_MAIN: 0289ec3b7da744b449257514ad393bb840d511da
+    steps:
+      - name: Checkout bootstrap branch without blobs
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
+      - name: Verify immutable inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse origin/breeze)" = "$EXPECTED_BREEZE"
+          git fetch --filter=blob:none origin main
+          test "$(git rev-parse origin/main)" = "$EXPECTED_MAIN"
+          test "$(git merge-base "$EXPECTED_BREEZE" "$EXPECTED_MAIN")" = "$PRODUCT_BASE"
+          printf 'breeze=%s\nmain=%s\nbase=%s\n' \
+            "$EXPECTED_BREEZE" "$EXPECTED_MAIN" "$PRODUCT_BASE"
+
+      - name: Rebase product commits onto audited Chromium main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name BreezeDelegate
+          git config user.email 271538431+BreezeDelegate@users.noreply.github.com
+          git rebase --onto "$EXPECTED_MAIN" "$PRODUCT_BASE" HEAD
+
+      - name: Assert Breeze files survived and generated Rust still needs regeneration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f BREEZE.md
+          test -f chrome/browser/breeze_adblock/breeze_adblock_ffi.rs
+          test -f chrome/browser/breeze_adblock/breeze_adblock_service.cc
+          test -f third_party/rust/chromium_crates_io/Cargo.toml
+          grep -F 'adblock = { version = "0.13.2"' third_party/rust/chromium_crates_io/Cargo.toml
+          grep -F '[crate.adblock]' third_party/rust/chromium_crates_io/gnrt_config.toml
+          printf 'rebased_head=%s\n' "$(git rev-parse HEAD)"
+          git status --short
+
+      - name: Record candidate patch metadata
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Breeze hosted rebase preflight'
+            echo
+            echo "- source breeze: \`$EXPECTED_BREEZE\`"
+            echo "- Chromium main: \`$EXPECTED_MAIN\`"
+            echo "- product base: \`$PRODUCT_BASE\`"
+            echo "- workflow ref: \`${GITHUB_SHA}\`"
+            echo
+            echo 'This job is a temporary GitHub-hosted preflight. It does not push or alter the product branch.'
+          } >> "$GITHUB_STEP_SUMMARY"
