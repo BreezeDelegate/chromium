@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: breeze-hosted-rebase-preflight
@@ -16,19 +16,20 @@ concurrency:
 jobs:
   semantic-rebase:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       PRODUCT_BASE: 66e4be60020fc281e94abfdcb37b86389283c03f
       FIRST_FIVE: 9ad4c05542a7eef639f3ba30448cb083865a5c66
       EXPECTED_BREEZE: 7047fd3d03eec7cd108a7001b17ba6e8eb70bfe1
       EXPECTED_MAIN: 0289ec3b7da744b449257514ad393bb840d511da
+      CANDIDATE_BRANCH: ci/breeze-rebased-candidate
     steps:
       - name: Checkout only Breeze-touched paths
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           filter: blob:none
-          persist-credentials: false
+          persist-credentials: true
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /.github/workflows/
@@ -124,7 +125,7 @@ jobs:
                   third_party/rust/chromium_crates_io/gnrt_config.toml
           git commit -m 'Reapply Breeze blocking on current Chromium'
 
-      - name: Assert semantic candidate
+      - name: Assert semantic candidate before gnrt
         shell: bash
         run: |
           set -euo pipefail
@@ -136,19 +137,92 @@ jobs:
           test -f third_party/rust/chromium_crates_io/patches/adblock-v0_13/0001-Add-preparsed-cosmetic-query.diff
           test "$(git merge-base HEAD "$EXPECTED_MAIN")" = "$EXPECTED_MAIN"
           test "$(git diff --name-only "$EXPECTED_MAIN" HEAD -- 'third_party/rust/**' | grep -v '^third_party/rust/chromium_crates_io/Cargo.toml$' | grep -v '^third_party/rust/chromium_crates_io/gnrt_config.toml$' | grep -v '^third_party/rust/chromium_crates_io/patches/adblock-v0_13/' | wc -l)" -eq 0
+
+      - name: Materialize current Chromium Rust tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          git sparse-checkout add \
+            '/tools/crates/' \
+            '/tools/rust/' \
+            '/tools/clang/scripts/' \
+            '/build/rust/' \
+            '/build/config/' \
+            '/third_party/rust/'
+          test -f tools/crates/run_gnrt.py
+          test -f tools/rust/update_rust.py
+          test -f third_party/rust/chromium_crates_io/Cargo.lock
+
+      - name: Install pinned Chromium Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/rust/update_rust.py
+          python3 tools/rust/update_rust.py --print-revision validate
+          third_party/rust-toolchain/bin/rustc --version
+          third_party/rust-toolchain/bin/cargo --version
+
+      - name: Regenerate adblock-rust with gnrt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/crates/run_gnrt.py vendor
+          python3 tools/crates/run_gnrt.py gen
+
+          python3 - <<'PY'
+          from pathlib import Path
+          lock = Path('third_party/rust/chromium_crates_io/Cargo.lock').read_text()
+          needle = 'name = "adblock"\nversion = "0.13.3"'
+          if needle not in lock:
+              raise SystemExit('Cargo.lock does not resolve adblock 0.13.3')
+          PY
+          test -f third_party/rust/adblock/v0_13/BUILD.gn
+          test -f third_party/rust/adblock/v0_13/README.chromium
+          grep -F 'crate_name = "adblock"' third_party/rust/adblock/v0_13/BUILD.gn
+          git diff --name-only "$EXPECTED_MAIN" HEAD -- third_party/rust/ | sort > /tmp/rust-before-commit.txt
+          test -s /tmp/rust-before-commit.txt
+          git add third_party/rust/
+          git commit -m 'Regenerate adblock-rust 0.13.3 with gnrt'
+
+      - name: Validate candidate structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git merge-base HEAD "$EXPECTED_MAIN")" = "$EXPECTED_MAIN"
+          grep -F 'adblock = { version = "0.13.3"' third_party/rust/chromium_crates_io/Cargo.toml
+          python3 - <<'PY'
+          from pathlib import Path
+          lock = Path('third_party/rust/chromium_crates_io/Cargo.lock').read_text()
+          assert 'name = "adblock"\nversion = "0.13.3"' in lock
+          PY
+          git diff --check "$EXPECTED_MAIN" HEAD -- \
+            'chrome/**/*.cc' 'chrome/**/*.h' 'chrome/**/*.rs' \
+            'components/**/*.cc' 'components/**/*.h' \
+            'docs/*.md' 'BREEZE.md' 'AGENTS.md' \
+            'third_party/rust/**/*.toml' 'third_party/rust/**/*.gn' \
+            'third_party/rust/**/*.chromium'
           printf 'candidate=%s\n' "$(git rev-parse HEAD)"
           git status --short
+
+      - name: Publish isolated rebased candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git log -8 --format='%h %an <%ae> %s'
+          test "$(git log -1 --format=%ae)" = '271538431+BreezeDelegate@users.noreply.github.com'
+          git push --force origin HEAD:"refs/heads/$CANDIDATE_BRANCH"
 
       - name: Record candidate metadata
         if: always()
         shell: bash
         run: |
           {
-            echo '## Breeze hosted semantic rebase'
+            echo '## Breeze hosted semantic rebase + gnrt'
             echo
             echo "- source breeze: \`$EXPECTED_BREEZE\`"
             echo "- Chromium main: \`$EXPECTED_MAIN\`"
             echo "- product base: \`$PRODUCT_BASE\`"
+            echo "- candidate branch: \`$CANDIDATE_BRANCH\`"
             echo
-            echo 'Generated Rust output is intentionally excluded. The next gate regenerates adblock-rust 0.13.3 with gnrt.'
+            echo 'This is a temporary GitHub-hosted path. Product promotion remains blocked on reconciling the preserved VPS hot-swap WIP and on final self-hosted validation.'
           } >> "$GITHUB_STEP_SUMMARY"
