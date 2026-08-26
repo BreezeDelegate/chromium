@@ -22,12 +22,49 @@ jobs:
       EXPECTED_BREEZE: 7047fd3d03eec7cd108a7001b17ba6e8eb70bfe1
       EXPECTED_MAIN: 0289ec3b7da744b449257514ad393bb840d511da
     steps:
-      - name: Checkout only the workflow revision
+      - name: Checkout only Breeze-touched paths
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           filter: blob:none
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /.github/workflows/
+            /AGENTS.md
+            /BREEZE.md
+            /docs/ROADMAP.md
+            /docs/STATUS.md
+            /docs/PERFORMANCE.md
+            /chrome/app/chrome_dll.rc
+            /chrome/app/generated_resources.grd
+            /chrome/browser/BUILD.gn
+            /chrome/browser/autofill/test/android/java/src/org/chromium/chrome/browser/autofill/PersonalDataManagerTest.java
+            /chrome/browser/breeze_adblock/
+            /chrome/browser/chrome_content_browser_client.cc
+            /chrome/browser/extensions/component_extensions_allowlist/
+            /chrome/browser/extensions/component_loader.cc
+            /chrome/browser/extensions/component_loader.h
+            /chrome/browser/global_keyboard_shortcuts_mac.mm
+            /chrome/browser/resources/breeze_search/
+            /chrome/browser/resources/breeze_sponsorblock/
+            /chrome/browser/resources/component_extension_resources.grd
+            /chrome/browser/ui/accelerator_table.cc
+            /chrome/browser/ui/page_info/
+            /chrome/browser/ui/views/page_info/
+            /chrome/browser/ui/views/profiles/profile_bubble_interactive_uitest.cc
+            /chrome/browser/universal_web_contents_observers.cc
+            /chrome/common/extensions/extension_constants.h
+            /chrome/test/BUILD.gn
+            /components/autofill/core/common/autofill_prefs.cc
+            /components/autofill/core/common/autofill_prefs_unittest.cc
+            /components/password_manager/core/browser/password_manager.cc
+            /third_party/easylist/
+            /third_party/sponsorblock/
+            /third_party/rust/adblock/
+            /third_party/rust/arrayvec/
+            /third_party/rust/bitflags/
+            /third_party/rust/chromium_crates_io/
 
       - name: Fetch bounded Chromium history and verify immutable inputs
         shell: bash
