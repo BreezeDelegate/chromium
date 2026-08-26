@@ -16,26 +16,28 @@ concurrency:
 jobs:
   rebase-preflight:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 45
     env:
       PRODUCT_BASE: 66e4be60020fc281e94abfdcb37b86389283c03f
       EXPECTED_BREEZE: 7047fd3d03eec7cd108a7001b17ba6e8eb70bfe1
       EXPECTED_MAIN: 0289ec3b7da744b449257514ad393bb840d511da
     steps:
-      - name: Checkout bootstrap branch without blobs
+      - name: Checkout only the workflow revision
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           filter: blob:none
           persist-credentials: false
 
-      - name: Verify immutable inputs
+      - name: Fetch bounded Chromium history and verify immutable inputs
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse origin/breeze)" = "$EXPECTED_BREEZE"
-          git fetch --filter=blob:none origin main
-          test "$(git rev-parse origin/main)" = "$EXPECTED_MAIN"
+          git fetch --filter=blob:none --no-tags --depth=32 origin "$EXPECTED_BREEZE"
+          git fetch --filter=blob:none --no-tags --depth=2300 origin "$EXPECTED_MAIN"
+          git cat-file -e "$PRODUCT_BASE^{commit}"
+          git cat-file -e "$EXPECTED_BREEZE^{commit}"
+          git cat-file -e "$EXPECTED_MAIN^{commit}"
           test "$(git merge-base "$EXPECTED_BREEZE" "$EXPECTED_MAIN")" = "$PRODUCT_BASE"
           printf 'breeze=%s\nmain=%s\nbase=%s\n' \
             "$EXPECTED_BREEZE" "$EXPECTED_MAIN" "$PRODUCT_BASE"
@@ -46,7 +48,8 @@ jobs:
           set -euo pipefail
           git config user.name BreezeDelegate
           git config user.email 271538431+BreezeDelegate@users.noreply.github.com
-          git rebase --onto "$EXPECTED_MAIN" "$PRODUCT_BASE" HEAD
+          git checkout -B breeze-rebase-candidate "$EXPECTED_BREEZE"
+          git rebase --onto "$EXPECTED_MAIN" "$PRODUCT_BASE" breeze-rebase-candidate
 
       - name: Assert Breeze files survived and generated Rust still needs regeneration
         shell: bash
@@ -73,5 +76,5 @@ jobs:
             echo "- product base: \`$PRODUCT_BASE\`"
             echo "- workflow ref: \`${GITHUB_SHA}\`"
             echo
-            echo 'This job is a temporary GitHub-hosted preflight. It does not push or alter the product branch.'
+            echo 'Temporary GitHub-hosted preflight only. It does not push or alter the product branch.'
           } >> "$GITHUB_STEP_SUMMARY"
