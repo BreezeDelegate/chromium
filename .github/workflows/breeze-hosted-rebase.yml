@@ -146,11 +146,13 @@ jobs:
             '/tools/crates/' \
             '/tools/rust/' \
             '/tools/clang/scripts/' \
+            '/build/vs_toolchain.py' \
             '/build/rust/' \
             '/build/config/' \
             '/third_party/rust/'
           test -f tools/crates/run_gnrt.py
           test -f tools/rust/update_rust.py
+          test -f build/vs_toolchain.py
           test -f third_party/rust/chromium_crates_io/Cargo.lock
 
       - name: Install pinned Chromium Rust toolchain
