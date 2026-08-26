@@ -1,4 +1,4 @@
-name: Breeze hosted rebase preflight
+name: Breeze hosted semantic rebase
 
 on:
   push:
@@ -14,11 +14,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  rebase-preflight:
+  semantic-rebase:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       PRODUCT_BASE: 66e4be60020fc281e94abfdcb37b86389283c03f
+      FIRST_FIVE: 9ad4c05542a7eef639f3ba30448cb083865a5c66
       EXPECTED_BREEZE: 7047fd3d03eec7cd108a7001b17ba6e8eb70bfe1
       EXPECTED_MAIN: 0289ec3b7da744b449257514ad393bb840d511da
     steps:
@@ -61,15 +62,10 @@ jobs:
             /components/password_manager/core/browser/password_manager.cc
             /third_party/easylist/
             /third_party/sponsorblock/
-            /third_party/rust/adblock/
-            /third_party/rust/arrayvec/
-            /third_party/rust/bitflags/
             /third_party/rust/chromium_crates_io/Cargo.toml
             /third_party/rust/chromium_crates_io/Cargo.lock
             /third_party/rust/chromium_crates_io/gnrt_config.toml
             /third_party/rust/chromium_crates_io/patches/adblock-v0_13/
-            /third_party/rust/chromium_crates_io/patches/flatbuffers-v25/
-            /third_party/rust/chromium_crates_io/patches/seahash-v4/
 
       - name: Fetch bounded Chromium history and verify immutable inputs
         shell: bash
@@ -77,47 +73,88 @@ jobs:
           set -euo pipefail
           git -c submodule.recurse=false fetch --filter=blob:none --no-tags --depth=32 origin "$EXPECTED_BREEZE"
           git -c submodule.recurse=false fetch --filter=blob:none --no-tags --depth=2300 origin "$EXPECTED_MAIN"
-          git cat-file -e "$PRODUCT_BASE^{commit}"
-          git cat-file -e "$EXPECTED_BREEZE^{commit}"
-          git cat-file -e "$EXPECTED_MAIN^{commit}"
           test "$(git merge-base "$EXPECTED_BREEZE" "$EXPECTED_MAIN")" = "$PRODUCT_BASE"
-          printf 'breeze=%s\nmain=%s\nbase=%s\n' \
-            "$EXPECTED_BREEZE" "$EXPECTED_MAIN" "$PRODUCT_BASE"
+          git cat-file -e "$FIRST_FIVE^{commit}"
+          printf 'breeze=%s\nmain=%s\nbase=%s\n' "$EXPECTED_BREEZE" "$EXPECTED_MAIN" "$PRODUCT_BASE"
 
-      - name: Rebase product commits onto audited Chromium main
+      - name: Rebase the first five commits normally
         shell: bash
         run: |
           set -euo pipefail
           git config user.name BreezeDelegate
           git config user.email 271538431+BreezeDelegate@users.noreply.github.com
           git config submodule.recurse false
-          git checkout -B breeze-rebase-candidate "$EXPECTED_BREEZE"
+          git checkout -B breeze-rebase-candidate "$FIRST_FIVE"
           git rebase --onto "$EXPECTED_MAIN" "$PRODUCT_BASE" breeze-rebase-candidate
 
-      - name: Assert Breeze files survived and generated Rust still needs regeneration
+      - name: Apply the remaining Breeze source without stale generated Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --binary "$FIRST_FIVE" "$EXPECTED_BREEZE" -- . \
+            ':(exclude)third_party/rust/chromium_crates_io/Cargo.toml' \
+            ':(exclude)third_party/rust/chromium_crates_io/Cargo.lock' \
+            ':(exclude)third_party/rust/chromium_crates_io/BUILD.gn' \
+            ':(exclude)third_party/rust/chromium_crates_io/vendor/**' \
+            ':(exclude)third_party/rust/adblock/**' \
+            ':(exclude)third_party/rust/arrayvec/**' \
+            ':(exclude)third_party/rust/bitflags/**' \
+            > /tmp/breeze-source.patch
+          test -s /tmp/breeze-source.patch
+          git apply --3way --index /tmp/breeze-source.patch
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          cargo = Path('third_party/rust/chromium_crates_io/Cargo.toml')
+          text = cargo.read_text()
+          dep = 'adblock = { version = "0.13.3", default-features = false, features = ["full-regex-handling"] }\n'
+          if 'adblock = {' not in text:
+              marker = '[dependencies]\n'
+              if marker not in text:
+                  raise SystemExit('missing [dependencies]')
+              text = text.replace(marker, marker + dep, 1)
+          else:
+              raise SystemExit('unexpected upstream adblock dependency')
+          cargo.write_text(text)
+
+          cfg = Path('third_party/rust/chromium_crates_io/gnrt_config.toml')
+          text = cfg.read_text()
+          if '[crate.adblock]' not in text:
+              block = '\n[crate.adblock]\nextra_kv = { allow_unsafe = true }\n'
+              text += block
+          cfg.write_text(text)
+          PY
+
+          git add third_party/rust/chromium_crates_io/Cargo.toml \
+                  third_party/rust/chromium_crates_io/gnrt_config.toml
+          git commit -m 'Reapply Breeze blocking on current Chromium'
+
+      - name: Assert semantic candidate
         shell: bash
         run: |
           set -euo pipefail
           test -f BREEZE.md
           test -f chrome/browser/breeze_adblock/breeze_adblock_ffi.rs
           test -f chrome/browser/breeze_adblock/breeze_adblock_service.cc
-          test -f third_party/rust/chromium_crates_io/Cargo.toml
-          grep -F 'adblock = { version = "0.13.2"' third_party/rust/chromium_crates_io/Cargo.toml
+          grep -F 'adblock = { version = "0.13.3"' third_party/rust/chromium_crates_io/Cargo.toml
           grep -F '[crate.adblock]' third_party/rust/chromium_crates_io/gnrt_config.toml
-          printf 'rebased_head=%s\n' "$(git rev-parse HEAD)"
+          test -f third_party/rust/chromium_crates_io/patches/adblock-v0_13/0001-Add-Request-preparsed-constructor.diff
+          test -f third_party/rust/chromium_crates_io/patches/adblock-v0_13/0002-Add-preparsed-cosmetic-query.diff || true
+          test "$(git merge-base HEAD "$EXPECTED_MAIN")" = "$EXPECTED_MAIN"
+          printf 'candidate=%s\n' "$(git rev-parse HEAD)"
           git status --short
 
-      - name: Record candidate patch metadata
+      - name: Record candidate metadata
         if: always()
         shell: bash
         run: |
           {
-            echo '## Breeze hosted rebase preflight'
+            echo '## Breeze hosted semantic rebase'
             echo
             echo "- source breeze: \`$EXPECTED_BREEZE\`"
             echo "- Chromium main: \`$EXPECTED_MAIN\`"
             echo "- product base: \`$PRODUCT_BASE\`"
-            echo "- workflow ref: \`${GITHUB_SHA}\`"
             echo
-            echo 'Temporary GitHub-hosted preflight only. It does not push or alter the product branch.'
+            echo 'Generated Rust output is intentionally excluded. The next gate regenerates adblock-rust 0.13.3 with gnrt.'
           } >> "$GITHUB_STEP_SUMMARY"
