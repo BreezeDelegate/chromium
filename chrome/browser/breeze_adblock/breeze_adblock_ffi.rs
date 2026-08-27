@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use adblock::Engine;
+use adblock::lists::ParseOptions;
 use adblock::request::Request;
+use adblock::{Engine, FilterSet};
 
 pub struct BreezeAdblockEngine {
     engine: Engine,
@@ -16,6 +17,8 @@ mod ffi {
         type BreezeAdblockEngine;
 
         fn new_engine(serialized: &[u8]) -> Box<BreezeAdblockEngine>;
+        fn compile_engine(easylist: &str, easyprivacy: &str) -> Vec<u8>;
+        fn is_loaded(self: &BreezeAdblockEngine) -> bool;
         fn should_block(
             self: &BreezeAdblockEngine,
             url: &str,
@@ -48,7 +51,22 @@ fn new_engine(serialized: &[u8]) -> Box<BreezeAdblockEngine> {
     Box::new(BreezeAdblockEngine { engine, loaded })
 }
 
+fn compile_engine(easylist: &str, easyprivacy: &str) -> Vec<u8> {
+    if easylist.is_empty() || easyprivacy.is_empty() {
+        return Vec::new();
+    }
+
+    let mut filters = FilterSet::new(false);
+    filters.add_filter_list(easylist.to_owned(), ParseOptions::default());
+    filters.add_filter_list(easyprivacy.to_owned(), ParseOptions::default());
+    Engine::new_with_filter_set(filters).serialize()
+}
+
 impl BreezeAdblockEngine {
+    fn is_loaded(&self) -> bool {
+        self.loaded
+    }
+
     fn should_block(
         &self,
         url: &str,
