@@ -31,15 +31,7 @@ class AutofillProfilePrefsTest : public ::testing::Test {
 TEST_F(AutofillProfilePrefsTest, SetAutofillProfileEnabled) {
   constexpr int kOptIn = 0;
   constexpr int kOptOut = 1;
-  ASSERT_TRUE(IsAutofillProfileEnabled(pref_service()));
-
-  {
-    base::HistogramTester histogram_tester;
-    SetAutofillProfileEnabled(pref_service(), false);
-    EXPECT_FALSE(IsAutofillProfileEnabled(pref_service()));
-    histogram_tester.ExpectUniqueSample("Autofill.Address.IsEnabled.Change",
-                                        kOptOut, 1);
-  }
+  ASSERT_FALSE(IsAutofillProfileEnabled(pref_service()));
 
   {
     base::HistogramTester histogram_tester;
@@ -48,16 +40,24 @@ TEST_F(AutofillProfilePrefsTest, SetAutofillProfileEnabled) {
     histogram_tester.ExpectUniqueSample("Autofill.Address.IsEnabled.Change",
                                         kOptIn, 1);
   }
+
+  {
+    base::HistogramTester histogram_tester;
+    SetAutofillProfileEnabled(pref_service(), false);
+    EXPECT_FALSE(IsAutofillProfileEnabled(pref_service()));
+    histogram_tester.ExpectUniqueSample("Autofill.Address.IsEnabled.Change",
+                                        kOptOut, 1);
+  }
 }
 
 // Tests that `SetAutofillProfileEnabled` does not emit a metric if there is no
 // pref change.
 TEST_F(AutofillProfilePrefsTest, SetAutofillProfileEnabledAsNoOp) {
-  ASSERT_TRUE(IsAutofillProfileEnabled(pref_service()));
+  ASSERT_FALSE(IsAutofillProfileEnabled(pref_service()));
 
   base::HistogramTester histogram_tester;
-  SetAutofillProfileEnabled(pref_service(), true);
-  EXPECT_TRUE(IsAutofillProfileEnabled(pref_service()));
+  SetAutofillProfileEnabled(pref_service(), false);
+  EXPECT_FALSE(IsAutofillProfileEnabled(pref_service()));
   histogram_tester.ExpectTotalCount("Autofill.Address.IsEnabled.Change", 0);
 }
 
