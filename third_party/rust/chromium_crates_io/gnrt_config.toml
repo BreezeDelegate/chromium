@@ -113,6 +113,9 @@ removed_librs_template = "removed_lib.rs.hbs"
 remove_crates = []
 root = "chromium"
 
+[crate.adblock]
+extra_kv = { allow_unsafe = true }
+
 [crate.addr2line]
 allow_first_party_usage = false
 extra_kv = { allow_unsafe = true }
@@ -155,6 +158,9 @@ allow_unsafe = true
 multiversion_cleanup_bug = "https://crbug.com/493648954"
 
 [crate.array-init]
+extra_kv = { allow_unsafe = true }
+
+[crate.arrayvec]
 extra_kv = { allow_unsafe = true }
 
 [crate.autocfg.extra_kv]
@@ -362,6 +368,10 @@ allow_unsafe = false
 [crate.fixed_decimal.extra_kv]
 allow_unsafe = false
 
+[crate.flatbuffers]
+license_files = ["LICENSE"]
+extra_kv = { allow_unsafe = true }
+
 [crate.flate2]
 ban_features = [
     # `any_zlib` feature is banned because Chromium does not use the `zlib`
@@ -382,6 +392,9 @@ allow_unsafe = true
 
 [crate.font-types.extra_kv]
 allow_unsafe = true
+
+[crate.form_urlencoded]
+extra_kv = { allow_unsafe = true }
 
 [crate.fs2]
 group = 'test'
@@ -549,6 +562,12 @@ allow_unsafe = true
 [crate.icu_provider_adapters]
 group = 'safe'
 allow_first_party_usage = true
+extra_kv = { allow_unsafe = false }
+
+[crate.idna]
+extra_kv = { allow_unsafe = true }
+
+[crate.idna_adapter]
 extra_kv = { allow_unsafe = false }
 
 [crate.image]
@@ -732,6 +751,9 @@ extra_kv = { allow_unsafe = true }
 [crate.parking_lot_core]
 extra_kv = { allow_unsafe = true }
 
+[crate.percent-encoding]
+extra_kv = { allow_unsafe = true }
+
 [crate.png.extra_kv]
 allow_unsafe = false
 # Web tests (aka WPT tests, also formerly known as Layout Tests) require fast
@@ -748,6 +770,9 @@ extra_kv = { allow_unsafe = true }
 
 [crate.potential_utf.extra_kv]
 allow_unsafe = true
+
+[crate.precomputed-hash]
+extra_kv = { allow_unsafe = false }
 
 [crate.primal-check]
 extra_kv = { allow_unsafe = false }
@@ -812,6 +837,12 @@ allow_unsafe = false
 extra_kv = { allow_unsafe = true }
 shipped = false
 
+[crate.rustc-hash]
+extra_kv = { allow_unsafe = false }
+
+[crate.rustc_version]
+extra_kv = { allow_unsafe = false }
+
 [crate.rustfft]
 extra_kv = { allow_unsafe = true }
 
@@ -829,6 +860,13 @@ allow_first_party_usage = false
 extra_kv = { allow_unsafe = true }
 
 [crate.scopeguard]
+extra_kv = { allow_unsafe = true }
+
+[crate.seahash]
+license_files = ["LICENSE"]
+extra_kv = { allow_unsafe = true }
+
+[crate.semver]
 extra_kv = { allow_unsafe = true }
 
 [crate.serde]
@@ -1032,6 +1070,9 @@ extra_kv = { allow_unsafe = false }
 allow_first_party_usage = false
 extra_kv = { allow_unsafe = true }
 
+[crate.url]
+extra_kv = { allow_unsafe = true }
+
 [crate.utf16_iter]
 license_files = ["LICENSE-APACHE"]
 
@@ -1164,21 +1205,4 @@ extra_kv = { allow_unsafe = true }
 extra_kv = { allow_unsafe = false }
 
 [crate.zune-jpeg]
-extra_kv = { allow_unsafe = true }
-
-[crate.adblock]
-extra_kv = { allow_unsafe = true }
-
-[crate.arrayvec]
-extra_kv = { allow_unsafe = true }
-
-[crate.flatbuffers]
-license_files = ["LICENSE"]
-extra_kv = { allow_unsafe = true }
-
-[crate.form_urlencoded]
-extra_kv = { allow_unsafe = true }
-
-[crate.seahash]
-license_files = ["LICENSE"]
 extra_kv = { allow_unsafe = true }
