@@ -1,0 +1,131 @@
+name: Breeze Windows installer build
+
+on:
+  push:
+    branches:
+      - ci/windows-installer-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 360
+    env:
+      DEPOT_TOOLS_WIN_TOOLCHAIN: "0"
+      CHROMIUM_BUILDTOOLS_PATH: "${{ github.workspace }}\\src\\buildtools"
+    steps:
+      - name: Checkout Breeze candidate
+        uses: actions/checkout@v4
+        with:
+          path: src
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+
+      - name: Prepare depot_tools and gclient
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          git config --global core.longpaths true
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:RUNNER_TEMP\depot_tools"
+          "$env:RUNNER_TEMP\depot_tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          @'
+          solutions = [
+            {
+              "name": "src",
+              "url": "https://github.com/BreezeDelegate/chromium.git",
+              "managed": False,
+              "custom_deps": {},
+              "custom_vars": {},
+            },
+          ]
+          target_os = ["win"]
+          '@ | Set-Content -Path ".gclient" -Encoding ascii
+          Get-PSDrive D | Format-Table Name, Used, Free
+
+      - name: Sync Chromium dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          gclient sync --no-history --shallow --force --nohooks
+          gclient runhooks
+          Get-PSDrive D | Format-Table Name, Used, Free
+
+      - name: Configure Breeze release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path "src\out\Breeze" | Out-Null
+          @'
+          is_debug = false
+          is_component_build = false
+          symbol_level = 0
+          blink_symbol_level = 0
+          v8_symbol_level = 0
+          use_remoteexec = false
+          chrome_pgo_phase = 0
+          '@ | Set-Content -Path "src\out\Breeze\args.gn" -Encoding ascii
+          Push-Location src
+          gn gen out/Breeze
+          gn args out/Breeze --list --short | Select-String "is_debug|is_component_build|symbol_level|use_remoteexec|chrome_pgo_phase"
+          Pop-Location
+
+      - name: Build mini installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Push-Location src
+          autoninja -C out/Breeze mini_installer
+          Pop-Location
+          if (!(Test-Path "src\out\Breeze\mini_installer.exe")) { throw "mini_installer.exe missing" }
+          $item = Get-Item "src\out\Breeze\mini_installer.exe"
+          Write-Host "mini_installer_bytes=$($item.Length)"
+          Get-FileHash "src\out\Breeze\mini_installer.exe" -Algorithm SHA256
+          Get-PSDrive D | Format-Table Name, Used, Free
+
+      - name: Smoke install and launch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $installer = (Resolve-Path "src\out\Breeze\mini_installer.exe").Path
+          $proc = Start-Process -FilePath $installer -ArgumentList "--verbose-logging" -PassThru -Wait
+          if ($proc.ExitCode -ne 0) { throw "installer exit code $($proc.ExitCode)" }
+          $candidates = @(
+            "$env:LOCALAPPDATA\Chromium\Application\chrome.exe",
+            "$env:LOCALAPPDATA\Breeze\Application\chrome.exe"
+          )
+          $chrome = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (!$chrome) { throw "installed browser executable not found" }
+          Write-Host "installed=$chrome"
+          $profile = Join-Path $env:RUNNER_TEMP "breeze-smoke-profile"
+          $output = & $chrome --headless=new --disable-gpu --no-first-run --no-default-browser-check --user-data-dir="$profile" --dump-dom "data:text/html,<title>BreezeSmoke</title><p id='ok'>ok</p>" 2>&1
+          $output | Write-Host
+          if (($output -join "`n") -notmatch "BreezeSmoke") { throw "headless smoke did not render test page" }
+
+      - name: Package installer artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          Copy-Item "src\out\Breeze\mini_installer.exe" "artifact\BreezeSetup-x64.exe"
+          $hash = (Get-FileHash "artifact\BreezeSetup-x64.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  BreezeSetup-x64.exe" | Set-Content "artifact\SHA256SUMS.txt" -Encoding ascii
+          @"
+          Breeze Chromium Windows x64
+          Source commit: $env:GITHUB_SHA
+          Chromium base: 0289ec3b7da744b449257514ad393bb840d511da
+          Build: Windows Server 2025 / Visual Studio 2026 / SDK 10.0.26100
+          Signing: unsigned development build
+          "@ | Set-Content "artifact\BUILD-INFO.txt" -Encoding ascii
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Breeze-Windows-x64
+          path: artifact/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
