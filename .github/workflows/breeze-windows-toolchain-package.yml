@@ -1,0 +1,82 @@
+name: Breeze Windows cross toolchain package
+
+on:
+  push:
+    branches:
+      - ci/windows-toolchain-package
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    steps:
+      - name: Prepare depot_tools
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:RUNNER_TEMP\depot_tools"
+          "$env:RUNNER_TEMP\depot_tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -format json
+
+      - name: Install Chromium Windows SDK 28000
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sdkSetup = Join-Path $env:RUNNER_TEMP "winsdksetup-28000.exe"
+          $sdkUrl = "https://download.microsoft.com/download/38ab8f6d-3676-4860-ae84-3361308b9d7f/KIT_BUNDLE_WINDOWSSDK_MEDIACREATION/winsdksetup.exe"
+          Invoke-WebRequest -Uri $sdkUrl -OutFile $sdkSetup -UseBasicParsing
+          $actual = (Get-FileHash $sdkSetup -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expected = "b534d37a1f3140c8be1298ed88855b8cbddc35d2626c4d0afd39f186a4b578e3"
+          if ($actual -ne $expected) { throw "Windows SDK installer checksum mismatch: $actual" }
+          $features = @(
+            "OptionId.DesktopCPPx86",
+            "OptionId.DesktopCPPx64",
+            "OptionId.UWPCPP",
+            "OptionId.SigningTools",
+            "OptionId.WindowsDesktopDebuggers"
+          )
+          $args = @("/features") + $features + @("/quiet", "/norestart")
+          $proc = Start-Process -FilePath $sdkSetup -ArgumentList $args -PassThru -Wait
+          if ($proc.ExitCode -notin @(0, 3010)) { throw "Windows SDK installer exit code $($proc.ExitCode)" }
+          $sdkRoot = "C:\Program Files (x86)\Windows Kits\10"
+          foreach ($path in @(
+            "$sdkRoot\Include\10.0.28000.0\um",
+            "$sdkRoot\Include\10.0.28000.0\ucrt",
+            "$sdkRoot\Lib\10.0.28000.0\um\x64",
+            "$sdkRoot\Lib\10.0.28000.0\ucrt\x64"
+          )) {
+            if (!(Test-Path $path)) { throw "Required Windows SDK path missing: $path" }
+          }
+
+      - name: Package VS 2026 toolchain for Linux cross-build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Push-Location "$env:RUNNER_TEMP\depot_tools\win_toolchain"
+          python package_from_installed.py 2026 -w 10.0.28000.0 --noarm --dryrun
+          python package_from_installed.py 2026 -w 10.0.28000.0 --noarm
+          Pop-Location
+          $zip = Get-ChildItem "$env:RUNNER_TEMP\depot_tools\win_toolchain\*.zip" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (!$zip) { throw "Packaged toolchain zip missing" }
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          Copy-Item $zip.FullName "artifact\$($zip.Name)"
+          $hash = (Get-FileHash "artifact\$($zip.Name)" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "filename=$($zip.Name)" | Set-Content "artifact\TOOLCHAIN-INFO.txt" -Encoding ascii
+          "sha256=$hash" | Add-Content "artifact\TOOLCHAIN-INFO.txt" -Encoding ascii
+          "vs=2026" | Add-Content "artifact\TOOLCHAIN-INFO.txt" -Encoding ascii
+          "sdk=10.0.28000.0" | Add-Content "artifact\TOOLCHAIN-INFO.txt" -Encoding ascii
+          Get-Item "artifact\$($zip.Name)" | Select-Object Name,Length
+          Get-Content "artifact\TOOLCHAIN-INFO.txt"
+
+      - name: Upload cross toolchain
+        uses: actions/upload-artifact@v4
+        with:
+          name: Breeze-Windows-Cross-Toolchain
+          path: artifact/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 2
