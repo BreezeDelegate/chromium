@@ -1,0 +1,7 @@
+#tads,
+#tadsb,
+[data-text-ad],
+[data-pla-slot-pos],
+[data-shopping-ads-container] {
+  display: none !important;
+}
