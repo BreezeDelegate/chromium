@@ -23,6 +23,8 @@ jobs:
       EXPECTED_BREEZE: 7047fd3d03eec7cd108a7001b17ba6e8eb70bfe1
       EXPECTED_MAIN: 0289ec3b7da744b449257514ad393bb840d511da
       CANDIDATE_BRANCH: ci/breeze-rebased-candidate
+      GN_REVISION: c7ffaf80713afbe5a4f4d95a605c0a98084374de
+      GN_ARCHIVE_SHA256: eea1d9903a57be84a822632b5e4f9fbdd071d681523aa6f28852322b3361fc65
     steps:
       - name: Checkout only Breeze-touched paths
         uses: actions/checkout@v4
@@ -201,6 +203,35 @@ jobs:
           python3 tools/rust/update_rust.py --print-revision validate
           third_party/rust-toolchain/bin/rustc --version
           third_party/rust-toolchain/bin/cargo --version
+
+      - name: Install Chromium-pinned GN formatter
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/gn.zip"
+          gn_dir="$RUNNER_TEMP/breeze-gn"
+          curl -fsSL \
+            "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/git_revision:$GN_REVISION" \
+            -o "$archive"
+          printf '%s  %s\n' "$GN_ARCHIVE_SHA256" "$archive" | sha256sum -c -
+          rm -rf "$gn_dir"
+          mkdir -p "$gn_dir"
+          python3 - "$archive" "$gn_dir" <<'PY'
+          import pathlib
+          import sys
+          import zipfile
+
+          archive = pathlib.Path(sys.argv[1])
+          destination = pathlib.Path(sys.argv[2])
+          with zipfile.ZipFile(archive) as package:
+              names = set(package.namelist())
+              if 'gn' not in names or '.cipdpkg/manifest.json' not in names:
+                  raise SystemExit('unexpected GN CIPD archive')
+              package.extract('gn', destination)
+          PY
+          chmod 0755 "$gn_dir/gn"
+          echo "$gn_dir" >> "$GITHUB_PATH"
+          "$gn_dir/gn" --version
 
       - name: Regenerate adblock-rust with gnrt
         shell: bash
