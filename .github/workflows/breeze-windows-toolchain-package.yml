@@ -56,9 +56,21 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          $msvcRoot = "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC"
+          $versions = @(Get-ChildItem $msvcRoot -Directory | Sort-Object Name -Descending)
+          if ($versions.Count -lt 1) { throw "No MSVC toolset found" }
+          $keep = $versions[0]
+          Write-Host "Keeping MSVC toolset $($keep.Name)"
+          foreach ($old in ($versions | Select-Object -Skip 1)) {
+            $disabled = Join-Path $env:RUNNER_TEMP ("msvc-disabled-" + $old.Name)
+            Write-Host "Temporarily moving $($old.Name) to $disabled"
+            Move-Item $old.FullName $disabled
+          }
           Push-Location "$env:RUNNER_TEMP\depot_tools\win_toolchain"
           python package_from_installed.py 2026 -w 10.0.28000.0 --noarm --dryrun
+          if ($LASTEXITCODE -ne 0) { throw "Toolchain dry-run failed with exit code $LASTEXITCODE" }
           python package_from_installed.py 2026 -w 10.0.28000.0 --noarm
+          if ($LASTEXITCODE -ne 0) { throw "Toolchain packaging failed with exit code $LASTEXITCODE" }
           Pop-Location
           $zip = Get-ChildItem "$env:RUNNER_TEMP\depot_tools\win_toolchain\*.zip" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (!$zip) { throw "Packaged toolchain zip missing" }
