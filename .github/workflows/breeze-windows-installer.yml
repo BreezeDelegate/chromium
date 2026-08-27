@@ -54,6 +54,30 @@ jobs:
           gclient runhooks
           Get-PSDrive D | Format-Table Name, Used, Free
 
+      - name: Install Chromium-required Windows SDK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sdkSetup = Join-Path $env:RUNNER_TEMP "winsdksetup-28000.exe"
+          $sdkUrl = "https://download.microsoft.com/download/38ab8f6d-3676-4860-ae84-3361308b9d7f/KIT_BUNDLE_WINDOWSSDK_MEDIACREATION/winsdksetup.exe"
+          Invoke-WebRequest -Uri $sdkUrl -OutFile $sdkSetup -UseBasicParsing
+          $actual = (Get-FileHash $sdkSetup -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expected = "b534d37a1f3140c8be1298ed88855b8cbddc35d2626c4d0afd39f186a4b578e3"
+          if ($actual -ne $expected) { throw "Windows SDK installer checksum mismatch: $actual" }
+          $args = @("/features", "OptionId.DesktopCPPx86", "OptionId.DesktopCPPx64", "OptionId.UWPCPP", "OptionId.SigningTools", "/quiet", "/norestart")
+          $proc = Start-Process -FilePath $sdkSetup -ArgumentList $args -PassThru -Wait
+          if ($proc.ExitCode -notin @(0, 3010)) { throw "Windows SDK installer exit code $($proc.ExitCode)" }
+          $sdkRoot = "C:\Program Files (x86)\Windows Kits\10"
+          $required = @(
+            "$sdkRoot\Include\10.0.28000.0\um",
+            "$sdkRoot\Include\10.0.28000.0\ucrt",
+            "$sdkRoot\Lib\10.0.28000.0\um\x64",
+            "$sdkRoot\Lib\10.0.28000.0\ucrt\x64"
+          )
+          foreach ($path in $required) { if (!(Test-Path $path)) { throw "Required Windows SDK path missing: $path" } }
+          Get-ChildItem "$sdkRoot\Include" -Directory | Select-Object -ExpandProperty Name
+          Get-PSDrive D | Format-Table Name, Used, Free
+
       - name: Configure Breeze release
         shell: pwsh
         run: |
@@ -117,7 +141,7 @@ jobs:
           Breeze Chromium Windows x64
           Source commit: $env:GITHUB_SHA
           Chromium base: 0289ec3b7da744b449257514ad393bb840d511da
-          Build: Windows Server 2025 / Visual Studio 2026 / SDK 10.0.26100
+          Build: Windows Server 2025 / Visual Studio 2026 / SDK 10.0.28000.0
           Signing: unsigned development build
           "@ | Set-Content "artifact\BUILD-INFO.txt" -Encoding ascii
 
