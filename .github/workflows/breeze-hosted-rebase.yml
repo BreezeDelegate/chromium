@@ -68,6 +68,7 @@ jobs:
             /third_party/rust/chromium_crates_io/gnrt_config.toml
             /third_party/rust/chromium_crates_io/patches/adblock-v0_13/
             /third_party/rust/chromium_crates_io/patches/flatbuffers-v25/
+            /third_party/rust/chromium_crates_io/patches/seahash-v4/
 
       - name: Fetch bounded Chromium history and verify immutable inputs
         shell: bash
