@@ -123,18 +123,34 @@ jobs:
               'arrayvec': 'extra_kv = { allow_unsafe = true }',
               'flatbuffers': 'license_files = ["LICENSE"]\nextra_kv = { allow_unsafe = true }',
               'form_urlencoded': 'extra_kv = { allow_unsafe = true }',
+              'seahash': 'license_files = ["LICENSE"]\nextra_kv = { allow_unsafe = true }',
           }
           for name, body in sections.items():
               if f'[crate.{name}]' in text or f'[crate.{name}.extra_kv]' in text:
                   raise SystemExit(f'unexpected upstream {name} gnrt config')
               text = text.rstrip() + f'\n\n[crate.{name}]\n{body}\n'
           cfg.write_text(text)
+
+          license_text = '''The MIT License (MIT)\n\nCopyright (c) 2016 Ticki\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the "Software"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n'''
+          patch_dir = Path('third_party/rust/chromium_crates_io/patches/seahash-v4')
+          patch_dir.mkdir(parents=True, exist_ok=True)
+          lines = license_text.splitlines()
+          patch = [
+              'diff --git a/third_party/rust/chromium_crates_io/vendor/seahash-v4/LICENSE b/third_party/rust/chromium_crates_io/vendor/seahash-v4/LICENSE',
+              'new file mode 100644',
+              '--- /dev/null',
+              '+++ b/third_party/rust/chromium_crates_io/vendor/seahash-v4/LICENSE',
+              f'@@ -0,0 +1,{len(lines)} @@',
+          ]
+          patch.extend('+' + line for line in lines)
+          (patch_dir / '0001-Add-upstream-license.diff').write_text('\n'.join(patch) + '\n')
           PY
 
           git add third_party/rust/chromium_crates_io/Cargo.toml \
                   third_party/rust/chromium_crates_io/gnrt_config.toml \
                   third_party/rust/chromium_crates_io/patches/adblock-v0_13/ \
-                  third_party/rust/chromium_crates_io/patches/flatbuffers-v25/
+                  third_party/rust/chromium_crates_io/patches/flatbuffers-v25/ \
+                  third_party/rust/chromium_crates_io/patches/seahash-v4/
           git commit -m 'Reapply Breeze blocking on current Chromium'
 
       - name: Assert semantic candidate before gnrt
@@ -149,11 +165,13 @@ jobs:
           grep -F '[crate.arrayvec]' third_party/rust/chromium_crates_io/gnrt_config.toml
           grep -F '[crate.flatbuffers]' third_party/rust/chromium_crates_io/gnrt_config.toml
           grep -F '[crate.form_urlencoded]' third_party/rust/chromium_crates_io/gnrt_config.toml
+          grep -F '[crate.seahash]' third_party/rust/chromium_crates_io/gnrt_config.toml
           test -f third_party/rust/chromium_crates_io/patches/adblock-v0_13/0001-Add-preparsed-cosmetic-query.diff
           test -f third_party/rust/chromium_crates_io/patches/flatbuffers-v25/0001-Add-upstream-license.diff
-          grep -F 'index 0000000..d645695' third_party/rust/chromium_crates_io/patches/flatbuffers-v25/0001-Add-upstream-license.diff
+          test -f third_party/rust/chromium_crates_io/patches/seahash-v4/0001-Add-upstream-license.diff
+          grep -F 'Copyright (c) 2016 Ticki' third_party/rust/chromium_crates_io/patches/seahash-v4/0001-Add-upstream-license.diff
           test "$(git merge-base HEAD "$EXPECTED_MAIN")" = "$EXPECTED_MAIN"
-          test "$(git diff --name-only "$EXPECTED_MAIN" HEAD -- 'third_party/rust/**' | grep -v '^third_party/rust/chromium_crates_io/Cargo.toml$' | grep -v '^third_party/rust/chromium_crates_io/gnrt_config.toml$' | grep -v '^third_party/rust/chromium_crates_io/patches/adblock-v0_13/' | grep -v '^third_party/rust/chromium_crates_io/patches/flatbuffers-v25/' | wc -l)" -eq 0
+          test "$(git diff --name-only "$EXPECTED_MAIN" HEAD -- 'third_party/rust/**' | grep -v '^third_party/rust/chromium_crates_io/Cargo.toml$' | grep -v '^third_party/rust/chromium_crates_io/gnrt_config.toml$' | grep -v '^third_party/rust/chromium_crates_io/patches/adblock-v0_13/' | grep -v '^third_party/rust/chromium_crates_io/patches/flatbuffers-v25/' | grep -v '^third_party/rust/chromium_crates_io/patches/seahash-v4/' | wc -l)" -eq 0
 
       - name: Materialize current Chromium Rust tooling
         shell: bash
@@ -200,6 +218,8 @@ jobs:
           test -f third_party/rust/adblock/v0_13/BUILD.gn
           test -f third_party/rust/adblock/v0_13/README.chromium
           grep -F 'crate_name = "adblock"' third_party/rust/adblock/v0_13/BUILD.gn
+          test -f third_party/rust/seahash/v4/README.chromium
+          grep -F 'License: MIT' third_party/rust/seahash/v4/README.chromium
           git diff --name-only "$EXPECTED_MAIN" HEAD -- third_party/rust/ | sort > /tmp/rust-before-commit.txt
           test -s /tmp/rust-before-commit.txt
           git add third_party/rust/
