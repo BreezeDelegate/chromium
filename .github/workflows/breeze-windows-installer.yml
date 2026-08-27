@@ -51,7 +51,30 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           gclient sync --no-history --shallow --force --nohooks
+
+          # lastchange.py ignores fork-only commits without Chromium Change-Id footers.
+          # A depth-1 fork checkout therefore falls back to epoch 0, which produces
+          # an invalid negative PE/COFF timestamp. Feed it the exact checked-out
+          # Breeze revision and commit time through Chromium's supported env path.
+          Push-Location src
+          $sourceHash = (git rev-parse HEAD).Trim()
+          $sourceEpochSeconds = [int64]((git show -s --format=%ct HEAD).Trim())
+          Pop-Location
+          $env:BASE_COMMIT_HASH = $sourceHash
+          $env:BASE_COMMIT_SUBMISSION_MS = [string]($sourceEpochSeconds * 1000)
+          Write-Host "lastchange_source=$sourceHash epoch=$sourceEpochSeconds"
+
           gclient runhooks
+
+          $lastchangeTime = [int64](Get-Content "src\build\util\LASTCHANGE.committime" -Raw).Trim()
+          $computedTimestamp = [int64](& python "src\build\compute_build_timestamp.py" default)
+          if ($lastchangeTime -ne $sourceEpochSeconds) {
+            throw "LASTCHANGE timestamp mismatch: expected $sourceEpochSeconds got $lastchangeTime"
+          }
+          if ($computedTimestamp -le 0 -or $computedTimestamp -gt [uint32]::MaxValue) {
+            throw "Invalid PE/COFF build timestamp: $computedTimestamp"
+          }
+          Write-Host "lastchange_time=$lastchangeTime build_timestamp=$computedTimestamp"
           Get-PSDrive D | Format-Table Name, Used, Free
 
       - name: Install Chromium-required Windows SDK
