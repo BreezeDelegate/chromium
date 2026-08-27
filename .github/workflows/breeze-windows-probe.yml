@@ -1,0 +1,29 @@
+name: Breeze Windows builder probe
+
+on:
+  push:
+    branches:
+      - ci/windows-build-probe
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - name: Report Windows builder capacity
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, Root, Used, Free
+          Write-Host "NUMBER_OF_PROCESSORS=$env:NUMBER_OF_PROCESSORS"
+          Write-Host "RUNNER_ARCH=$env:RUNNER_ARCH"
+          Write-Host "ImageOS=$env:ImageOS"
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, TotalVisibleMemorySize, FreePhysicalMemory | Format-List
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (Test-Path $vswhere) {
+            & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          }
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name
