@@ -92,6 +92,15 @@ inline constexpr char kGlicPublicKey[] =
     "YVUWJKu8V5ZyGWRJTtyo0tQiyNOx/kf3/"
     "f43CtsAKtsbFqJy9i9ux7JmF+KoORP1fjBJs0zpOGXWHbqIQIDAQAB";
 
+// The id and public key used for the bundled SponsorBlock extension.
+inline constexpr char kSponsorBlockExtensionId[] =
+    "jlnojaghimomhadpjjknamflciokoono";
+inline constexpr char kSponsorBlockPublicKey[] =
+    "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCsycWCoBMbOpeX+p7Q6kXvuF1N"
+    "W6OshwoNwjYFki2sH7IZ4WvusDHkvbbWAKaWlrQnswZMYOR4cuKzPmXe4sZypDvVA"
+    "5Qisw05R6ykL+pNClmrtpgtOCvhW+XGWd8n1US8qFnxQmavZe93sv+V7QubTp60Ki"
+    "Q1FIyWBzUEoMcILQIDAQAB";
+
 // The extension id of the Gemini testing extension.
 inline constexpr char kGlicTestExtensionId[] =
     "oljbkhokcbpaencibijkoolhipplkeoc";

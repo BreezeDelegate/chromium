@@ -1,0 +1,14 @@
+Name: SponsorBlock
+Short Name: sponsorblock
+URL: https://github.com/ajayyy/SponsorBlock
+Version: 6.1.7
+License: GPL-3.0
+License File: LICENSE
+Security Critical: no
+Shipped: yes
+
+The official ChromeExtension.zip is bundled unchanged.
+ChromeExtension.zip SHA-256: 7c8e3dc8b5e560b480ae8efdf28f4f1101fce0cc32434562a336a89e4962eda3
+SourceCodeUseThisOne.zip SHA-256: ee86c08d56538c295d8a6ef3f1f82f0709a2ae4b400da306812b595d011bdbcf
+
+The matching official source archive is kept beside this file. A stable component key is added in memory by the browser loader; upstream files are not modified.

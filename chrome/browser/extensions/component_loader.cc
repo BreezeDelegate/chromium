@@ -16,6 +16,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/json/json_reader.h"
 #include "base/logging.h"
+#include "base/memory/ref_counted_memory.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/path_service.h"
 #include "base/time/time.h"
@@ -61,6 +62,7 @@
 #include "extensions/common/manifest_constants.h"
 #include "pdf/buildflags.h"
 #include "printing/buildflags/buildflags.h"
+#include "third_party/zlib/google/zip.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/resource/resource_bundle.h"
@@ -117,6 +119,107 @@ ExtensionId GenerateId(const base::DictValue& manifest,
   CHECK(Extension::ParsePEMKeyBytes(*raw_key, &id_input));
   ExtensionId id = crx_file::id_util::GenerateId(id_input);
   return id;
+}
+
+constexpr char kSponsorBlockVersion[] = "6.1.7";
+
+struct PreparedBundledExtension {
+  base::FilePath root_directory;
+  base::DictValue manifest;
+};
+
+std::optional<PreparedBundledExtension> LoadSponsorBlockManifest(
+    const base::FilePath& root_directory) {
+  std::string error;
+  std::optional<base::DictValue> manifest =
+      file_util::LoadManifest(root_directory, &error);
+  if (!manifest) {
+    LOG(ERROR) << "Could not load bundled SponsorBlock manifest: " << error;
+    return std::nullopt;
+  }
+
+  const std::string* version = manifest->FindString(manifest_keys::kVersion);
+  if (!version || *version != kSponsorBlockVersion) {
+    LOG(ERROR) << "Unexpected bundled SponsorBlock version";
+    return std::nullopt;
+  }
+
+  manifest->Set(manifest_keys::kPublicKey,
+                extension_misc::kSponsorBlockPublicKey);
+  if (GenerateId(*manifest, root_directory) !=
+      extension_misc::kSponsorBlockExtensionId) {
+    LOG(ERROR) << "Unexpected bundled SponsorBlock extension id";
+    return std::nullopt;
+  }
+
+  return PreparedBundledExtension{root_directory, std::move(*manifest)};
+}
+
+std::optional<PreparedBundledExtension> PrepareSponsorBlockExtension(
+    const base::FilePath& profile_path,
+    scoped_refptr<base::RefCountedMemory> archive) {
+  DCHECK(GetExtensionFileTaskRunner()->RunsTasksInCurrentSequence());
+  if (!archive || archive->size() == 0) {
+    return std::nullopt;
+  }
+
+  const base::FilePath components_root =
+      profile_path.AppendASCII("BreezeComponents").AppendASCII("SponsorBlock");
+  if (!base::CreateDirectory(components_root)) {
+    LOG(ERROR) << "Could not create bundled component directory";
+    return std::nullopt;
+  }
+
+  base::FilePath archive_path;
+  if (!base::CreateTemporaryFileInDir(components_root, &archive_path) ||
+      !base::WriteFile(archive_path, base::span(*archive))) {
+    if (!archive_path.empty()) {
+      base::DeleteFile(archive_path);
+    }
+    LOG(ERROR) << "Could not stage bundled SponsorBlock archive";
+    return std::nullopt;
+  }
+
+  base::FilePath staging_dir;
+  if (!base::CreateTemporaryDirInDir(
+          components_root, FILE_PATH_LITERAL(".sponsorblock-"), &staging_dir)) {
+    base::DeleteFile(archive_path);
+    LOG(ERROR) << "Could not stage bundled SponsorBlock directory";
+    return std::nullopt;
+  }
+
+  const bool extracted = zip::Unzip(archive_path, staging_dir);
+  base::DeleteFile(archive_path);
+  if (!extracted) {
+    base::DeletePathRecursively(staging_dir);
+    LOG(ERROR) << "Could not unpack bundled SponsorBlock";
+    return std::nullopt;
+  }
+
+  std::optional<PreparedBundledExtension> prepared =
+      LoadSponsorBlockManifest(staging_dir);
+  if (!prepared) {
+    base::DeletePathRecursively(staging_dir);
+    return std::nullopt;
+  }
+
+  const base::FilePath final_dir =
+      components_root.AppendASCII(kSponsorBlockVersion);
+  if (base::PathExists(final_dir) &&
+      !base::DeletePathRecursively(final_dir)) {
+    base::DeletePathRecursively(staging_dir);
+    LOG(ERROR) << "Could not replace bundled SponsorBlock directory";
+    return std::nullopt;
+  }
+
+  if (!base::Move(staging_dir, final_dir)) {
+    base::DeletePathRecursively(staging_dir);
+    LOG(ERROR) << "Could not activate bundled SponsorBlock directory";
+    return std::nullopt;
+  }
+
+  prepared->root_directory = final_dir;
+  return prepared;
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -422,6 +525,34 @@ void ComponentLoader::AddContextualTasksExtension() {
   }
 }
 
+void ComponentLoader::AddSponsorBlockExtension() {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  scoped_refptr<base::RefCountedMemory> archive =
+      ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytes(
+          IDR_BREEZE_SPONSORBLOCK_ZIP);
+  if (!archive) {
+    LOG(ERROR) << "Bundled SponsorBlock archive is missing";
+    return;
+  }
+
+  GetExtensionFileTaskRunner()->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&PrepareSponsorBlockExtension, profile_->GetPath(),
+                     std::move(archive)),
+      base::BindOnce(
+          [](base::WeakPtr<ComponentLoader> loader,
+             std::optional<PreparedBundledExtension> prepared) {
+            if (!loader || !loader->profile_ || !loader->extension_system_ ||
+                !prepared) {
+              return;
+            }
+            ExtensionId id = loader->Add(std::move(prepared->manifest),
+                                         prepared->root_directory, false);
+            CHECK_EQ(extension_misc::kSponsorBlockExtensionId, id);
+          },
+          weak_factory_.GetWeakPtr()));
+}
+
 void ComponentLoader::AddWithNameAndDescription(
     int manifest_resource_id,
     const base::FilePath& root_directory,
@@ -636,6 +767,8 @@ void ComponentLoader::AddDefaultComponentExtensionsWithBackgroundPages(
     Add(IDR_ARC_SUPPORT_MANIFEST,
         base::FilePath(FILE_PATH_LITERAL("chromeos/arc_support")));
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+    AddSponsorBlockExtension();
   }
 
   AddAimEligibilityExtension();
