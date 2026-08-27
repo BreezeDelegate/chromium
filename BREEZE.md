@@ -6,7 +6,7 @@ The priorities are simple: privacy, speed, compatibility and a normal browsing e
 
 - Chromium security stays intact.
 - Browser password saving and personal-data Autofill stay off by default.
-- Ads and trackers are blocked natively.
+- Ads and trackers are blocked natively, with a per-site switch in Page Info.
 - SponsorBlock is bundled as a separate component.
 - Google Search keeps useful Gemini features while sponsored results are removed.
 - Direct Maps access is restored from Search where Google removes it.

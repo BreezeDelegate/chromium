@@ -1165,3 +1165,20 @@ extra_kv = { allow_unsafe = false }
 
 [crate.zune-jpeg]
 extra_kv = { allow_unsafe = true }
+
+[crate.adblock]
+extra_kv = { allow_unsafe = true }
+
+[crate.arrayvec]
+extra_kv = { allow_unsafe = true }
+
+[crate.flatbuffers]
+license_files = ["LICENSE"]
+extra_kv = { allow_unsafe = true }
+
+[crate.form_urlencoded]
+extra_kv = { allow_unsafe = true }
+
+[crate.seahash]
+license_files = ["LICENSE"]
+extra_kv = { allow_unsafe = true }

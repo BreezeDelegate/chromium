@@ -67,6 +67,8 @@
 #include "chrome/browser/browser_about_handler.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/breeze_adblock/breeze_adblock_prefs.h"
+#include "chrome/browser/breeze_adblock/breeze_adblock_throttle.h"
 #include "chrome/browser/browsing_data/chrome_browsing_data_model_delegate.h"
 #include "chrome/browser/browsing_data/chrome_browsing_data_remover_constants.h"
 #include "chrome/browser/btm/btm_browser_signin_detector.h"
@@ -1603,6 +1605,7 @@ void ChromeContentBrowserClient::RegisterLocalStatePrefs(
 // static
 void ChromeContentBrowserClient::RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
+  breeze_adblock::RegisterProfilePrefs(registry);
   registry->RegisterBooleanPref(prefs::kDisable3DAPIs, false);
   registry->RegisterBooleanPref(prefs::kEnableHyperlinkAuditing, true);
   // Register user prefs for mapping SitePerProcess and IsolateOrigins in
@@ -5970,6 +5973,9 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
   DCHECK(browser_context);
   Profile* profile = Profile::FromBrowserContext(browser_context);
   DCHECK(profile);
+
+  result.push_back(std::make_unique<breeze_adblock::BreezeAdblockThrottle>(
+      request, profile->GetPrefs()));
 
   ChromeNavigationUIData* chrome_navigation_ui_data =
       static_cast<ChromeNavigationUIData*>(navigation_ui_data);
