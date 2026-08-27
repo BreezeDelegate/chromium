@@ -41,6 +41,7 @@ source_set("impl") {
   ]
   deps = [
     "//chrome/browser/bluetooth",
+    "//chrome/browser/breeze_adblock",
     "//chrome/browser/page_info",
     "//chrome/browser/privacy_sandbox:headers",
     "//chrome/browser/serial",

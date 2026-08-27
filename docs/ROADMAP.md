@@ -6,7 +6,7 @@ Keep Chrome-like behavior while removing prompts and background features that do
 
 ## Blocking
 
-Use a native request/cosmetic filtering engine with maintained filter lists. Keep SponsorBlock isolated as its own licensed component.
+Use native request and cosmetic filtering with maintained lists and simple per-site controls, then add safe list updates. Keep SponsorBlock isolated as its own licensed component.
 
 ## Search
 
@@ -22,7 +22,7 @@ Build with the broadest codecs each target can legally ship. Support Widevine th
 
 ## Performance
 
-Measure startup, memory, tab switching, page load and background CPU before changing defaults. Prefer PGO/LTO and removing unnecessary work over benchmark-only flags.
+Measure startup, memory, tab switching, page load and background CPU before changing defaults. Preserve Chromium process isolation, BFCache and adaptive memory-pressure behavior unless measurements justify a change. Prefer PGO/LTO and removing unnecessary work over benchmark-only flags. See `docs/PERFORMANCE.md`.
 
 ## Updates
 

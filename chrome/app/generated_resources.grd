@@ -20155,6 +20155,17 @@ Please help our engineers fix this problem. Tell us what happened right before y
     <message name="IDS_OSCRYPTASYNC_AVAILABILITY_INFOBAR_BUTTON" desc="The text of the button to proceed with relaunching the entire browser to resolve keychain permission issues.">
       Relaunch
     </message>
+
+    <!-- Breeze ad blocking -->
+    <message name="IDS_BREEZE_ADBLOCK_PAGE_INFO_TITLE" desc="Title for the Breeze ad and tracker blocking control in Page Info.">
+      Ads and trackers
+    </message>
+    <message name="IDS_BREEZE_ADBLOCK_PAGE_INFO_ENABLED" desc="Status text shown when Breeze ad and tracker blocking is enabled for the current site.">
+      Blocking is on for this site
+    </message>
+    <message name="IDS_BREEZE_ADBLOCK_PAGE_INFO_DISABLED" desc="Status text shown when Breeze ad and tracker blocking is disabled for the current site.">
+      Blocking is off for this site
+    </message>
   </messages>
 </release>
 </grit>
