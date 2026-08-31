@@ -1008,7 +1008,10 @@ allow_unsafe = false
 [crate.termcolor.extra_kv]
 allow_unsafe = false
 
-[crate.thiserror]
+[crate."thiserror@v1"]
+extra_kv = { allow_unsafe = false }
+
+[crate."thiserror@v2"]
 build_script_outputs = [ "private.rs" ]
 extra_kv = { allow_unsafe = false }
 
