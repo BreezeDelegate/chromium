@@ -18,6 +18,7 @@ mod ffi {
 
         fn new_engine(serialized: &[u8]) -> Box<BreezeAdblockEngine>;
         fn compile_engine(easylist: &str, easyprivacy: &str) -> Vec<u8>;
+        fn serialized_engine_is_valid(serialized: &[u8]) -> bool;
         fn is_loaded(self: &BreezeAdblockEngine) -> bool;
         fn should_block(
             self: &BreezeAdblockEngine,
@@ -52,7 +53,9 @@ fn new_engine(serialized: &[u8]) -> Box<BreezeAdblockEngine> {
 }
 
 fn compile_engine(easylist: &str, easyprivacy: &str) -> Vec<u8> {
-    if easylist.is_empty() || easyprivacy.is_empty() {
+    if !is_expected_filter_list(easylist, "EasyList")
+        || !is_expected_filter_list(easyprivacy, "EasyPrivacy")
+    {
         return Vec::new();
     }
 
@@ -60,6 +63,33 @@ fn compile_engine(easylist: &str, easyprivacy: &str) -> Vec<u8> {
     filters.add_filter_list(easylist.to_owned(), ParseOptions::default());
     filters.add_filter_list(easyprivacy.to_owned(), ParseOptions::default());
     Engine::new_with_filter_set(filters).serialize()
+}
+
+fn serialized_engine_is_valid(serialized: &[u8]) -> bool {
+    if serialized.is_empty() {
+        return false;
+    }
+    let mut engine = Engine::default();
+    engine.deserialize(serialized).is_ok()
+}
+
+fn is_expected_filter_list(contents: &str, expected_title: &str) -> bool {
+    let mut lines = contents.lines();
+    let Some(header) = lines.next() else {
+        return false;
+    };
+    if !header
+        .trim_start_matches('\u{feff}')
+        .starts_with("[Adblock Plus")
+    {
+        return false;
+    }
+
+    lines.take(64).any(|line| {
+        let line = line.trim();
+        line.strip_prefix("! Title:")
+            .is_some_and(|title| title.trim() == expected_title)
+    })
 }
 
 impl BreezeAdblockEngine {
@@ -139,4 +169,25 @@ fn selectors_to_css(mut selectors: Vec<String>) -> String {
         css.push_str("{display:none!important;}\n");
     }
     css
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_non_filter_list_input() {
+        assert!(compile_engine("<html>error</html>", "not a filter list").is_empty());
+    }
+
+    #[test]
+    fn compiles_minimal_filter_lists() {
+        let easylist = "[Adblock Plus 2.0]\n! Title: EasyList\n||ads.example^\n";
+        let easyprivacy = "[Adblock Plus 2.0]\n! Title: EasyPrivacy\n||tracker.example^\n";
+        let serialized = compile_engine(easylist, easyprivacy);
+        assert!(!serialized.is_empty());
+        assert!(serialized_engine_is_valid(&serialized));
+        assert!(!serialized_engine_is_valid(b"not an engine"));
+        assert!(new_engine(&serialized).is_loaded());
+    }
 }

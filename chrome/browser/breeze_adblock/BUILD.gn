@@ -42,9 +42,13 @@ source_set("breeze_adblock") {
 
 source_set("unit_tests") {
   testonly = true
-  sources = [ "breeze_adblock_prefs_unittest.cc" ]
+  sources = [
+    "breeze_adblock_ffi_unittest.cc",
+    "breeze_adblock_prefs_unittest.cc",
+  ]
   deps = [
     ":breeze_adblock",
+    ":rust",
     "//components/sync_preferences:test_support",
     "//testing/gtest",
     "//url",
