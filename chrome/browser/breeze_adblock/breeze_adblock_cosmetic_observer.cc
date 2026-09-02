@@ -23,7 +23,7 @@
 namespace breeze_adblock {
 namespace {
 
-constexpr char kCollectDomTokensScript[] = R"JS(
+constexpr char16_t kCollectDomTokensScript[] = uR"JS(
 (()=>{
   const classes=new Set(),ids=new Set(),limit=4096,maxLength=256;
   const walker=document.createTreeWalker(document,NodeFilter.SHOW_ELEMENT);
@@ -64,7 +64,7 @@ void OnDomTokensCollected(content::GlobalRenderFrameHostId frame_id,
       !result.is_list()) {
     return;
   }
-  const base::Value::List& values = result.GetList();
+  const base::ListValue& values = result.GetList();
   if (values.size() != 2 || !values[0].is_string() || !values[1].is_string()) {
     return;
   }
@@ -101,7 +101,7 @@ void BreezeAdblockCosmeticObserver::DOMContentLoaded(
 
   InjectCss(render_frame_host, CosmeticCssForUrl(url));
   render_frame_host->ExecuteJavaScriptInIsolatedWorld(
-      base::UTF8ToUTF16(kCollectDomTokensScript),
+      kCollectDomTokensScript,
       base::BindOnce(&OnDomTokensCollected, render_frame_host->GetGlobalId(),
                      url),
       ISOLATED_WORLD_ID_CHROME_INTERNAL);
